@@ -1,0 +1,1627 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@lit-labs/virtualizer/virtualize.js", async () => {
+  const { html } = await import("lit");
+  return {
+    virtualize: vi.fn(() => html``),
+  };
+});
+
+vi.mock("../../src/client/Utils", () => ({
+  translateText: vi.fn((key: string) => {
+    const translations: Record<string, string> = {
+      "leaderboard_modal.win_score_tooltip":
+        "Weighted wins based on clan participation and match difficulty",
+      "leaderboard_modal.loss_score_tooltip":
+        "Weighted losses based on clan participation and match difficulty",
+      "leaderboard_modal.title": "Leaderboard",
+      "leaderboard_modal.ranked_tab": "Ranked",
+      "leaderboard_modal.ranked_2v2_tab": "2v2 Ranked",
+      "leaderboard_modal.ffa_rating_tab": "FFA Rating",
+      "leaderboard_modal.ranked_ffa_tab": "FFA Ranked",
+      "ffa_rating.rating": "Rating",
+      "leaderboard_modal.ranked_no_stats": "No ranked games on this ladder",
+      "leaderboard_modal.clans_tab": "Clans",
+      "leaderboard_modal.refresh_time": "Refreshed every 1 hour",
+      "leaderboard_modal.error": "Something went wrong",
+      "leaderboard_modal.rank": "Rank",
+      "leaderboard_modal.clan": "Clan",
+      "leaderboard_modal.games": "Games",
+      "leaderboard_modal.win_score": "Win Score",
+      "leaderboard_modal.loss_score": "Loss Score",
+      "leaderboard_modal.win_loss_ratio": "W/L",
+      "leaderboard_modal.ratio": "Ratio",
+      "leaderboard_modal.elo": "Elo",
+      "leaderboard_modal.player": "Player",
+      "common.loading": "Loading",
+      "leaderboard_modal.try_again": "Try Again",
+      "leaderboard_modal.no_data_yet": "No data yet",
+      "leaderboard_modal.no_stats": "No stats",
+      "leaderboard_modal.your_ranking": "Your ranking",
+      "common.close": "Close",
+    };
+    return translations[key] || key;
+  }),
+}));
+
+vi.mock("../../src/client/Api", async () => {
+  // Share the real end-of-list matcher so this mock cannot drift from it.
+  const { isPageBoundsMessage } = await vi.importActual<
+    typeof import("../../src/client/Api")
+  >("../../src/client/Api");
+  const getApiBase = () => "http://localhost:3000";
+  return {
+    getApiBase: vi.fn(getApiBase),
+    getUserMe: vi.fn(async () => false),
+    isPageBoundsMessage,
+    // Mirrors the control flow of the real fetchPlayerLeaderboard.
+    fetchPlayerLeaderboard: vi.fn(async (page: number) => {
+      const url = new URL(`${getApiBase()}/leaderboard/ranked`);
+      url.searchParams.set("page", String(page));
+      const res = await fetch(url.toString(), {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        if (res.status === 400) {
+          const body = await res.json().catch(() => null);
+          if (isPageBoundsMessage(body)) return "reached_limit";
+        }
+        return false;
+      }
+      return res.json();
+    }),
+    fetchFfaRankLeaderboard: vi.fn(async () => ({ players: [] })),
+    fetchFfaRankPosition: vi.fn(async () => null),
+    // Mirrors the real fetchTribeLeaderboard: page 1, plus page 2 only when
+    // page 1 came back exactly full.
+    fetchTribeLeaderboard: vi.fn(async () => {
+      const load = async (page: number) => {
+        const url = new URL(`${getApiBase()}/leaderboard/tribes`);
+        url.searchParams.set("page", String(page));
+        const res = await fetch(url.toString(), {
+          headers: { Accept: "application/json" },
+        });
+        return res.ok ? res.json() : false;
+      };
+      const first = await load(1);
+      if (first === false || first.tribes.length < 50) return first;
+      const second = await load(2);
+      if (second === false) return first;
+      return { ...first, tribes: [...first.tribes, ...second.tribes] };
+    }),
+  };
+});
+
+vi.mock("../../src/client/ClanApi", () => {
+  const getApiBase = () => "http://localhost:3000";
+  return {
+    fetchClanLeaderboard: vi.fn(async () => {
+      const res = await fetch(`${getApiBase()}/public/clans/leaderboard`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return false;
+      return res.json();
+    }),
+  };
+});
+
+const jsonRes = (data: any, ok = true, status = 200) => ({
+  ok,
+  status,
+  json: async () => data,
+});
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: any) => {
+      const url =
+        typeof input === "string" ? input : (input?.url ?? String(input));
+
+      if (url.includes("/public/clans/leaderboard")) {
+        return jsonRes({ start: "...", end: "...", clans: [] });
+      }
+      if (url.includes("/leaderboard/ranked")) {
+        return jsonRes({ "1v1": [], "2v2": [] });
+      }
+      if (url.includes("/leaderboard/tribes")) {
+        return jsonRes({
+          windowDays: 30,
+          start: "2026-06-27",
+          end: "2026-07-27",
+          tribes: [],
+        });
+      }
+      return jsonRes({}, false, 404);
+    }),
+  );
+});
+
+import { RankedType } from "@openfront/engine-api/game/GameTypes";
+import { RankedLeaderboardResponseSchema } from "@openfront/shared/ApiSchemas";
+import "../../src/client/components/baseComponents/Modal";
+import type { FfaTierBadge } from "../../src/client/components/ffaRating/FfaTierBadge";
+import { LeaderboardModal } from "../../src/client/LeaderboardModal";
+
+describe("LeaderboardModal", () => {
+  let modal: LeaderboardModal;
+  const awaitChildUpdate = async (selector: string) => {
+    const el = modal.querySelector(selector) as {
+      updateComplete?: Promise<unknown>;
+    } | null;
+    if (el?.updateComplete) {
+      await el.updateComplete;
+    }
+  };
+  const getClanTable = () =>
+    modal.querySelector("leaderboard-clan-table") as {
+      loadClanLeaderboard: () => Promise<void>;
+      updateComplete: Promise<unknown>;
+    } | null;
+  const getPlayerList = () =>
+    modal.querySelector("leaderboard-player-list") as {
+      loadPlayerLeaderboard: (reset?: boolean) => Promise<void>;
+      updateComplete: Promise<unknown>;
+      rankedType: RankedType;
+      playerData: Array<Record<string, unknown>>;
+      currentUserEntry?: { playerId: string } | null;
+      showStickyUser: boolean;
+    } | null;
+  // The list element is shared by both ladder tabs; the modal drives which
+  // ladder it shows off the active tab.
+  const showLadder = async (tab: string) => {
+    (modal as unknown as { activeTab: string }).activeTab = tab;
+    await modal.updateComplete;
+    const playerList = getPlayerList()!;
+    await playerList.updateComplete;
+    return playerList;
+  };
+
+  beforeEach(async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    if (!customElements.get("leaderboard-modal")) {
+      customElements.define("leaderboard-modal", LeaderboardModal);
+    }
+    modal = document.createElement("leaderboard-modal") as LeaderboardModal;
+    document.body.appendChild(modal);
+    await modal.updateComplete;
+  });
+
+  afterEach(() => {
+    document.body.removeChild(modal);
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  describe("Tooltip Implementation - Issue #2508", () => {
+    it("should render Win Score and Loss Score columns with title attributes", async () => {
+      // Mock fetch to return sample clan leaderboard data
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          start: "2025-01-01T00:00:00Z",
+          end: "2025-01-07T23:59:59Z",
+          clans: [
+            {
+              clanTag: "[TEST]",
+              games: 10,
+              wins: 8,
+              losses: 2,
+              playerSessions: 25,
+              weightedWins: 8.5,
+              weightedLosses: 1.5,
+              weightedWLRatio: 5.67,
+            },
+            {
+              clanTag: "[DEMO]",
+              games: 8,
+              wins: 6,
+              losses: 2,
+              playerSessions: 20,
+              weightedWins: 6.0,
+              weightedLosses: 2.0,
+              weightedWLRatio: 3.0,
+            },
+          ],
+        }),
+      });
+
+      (modal as unknown as { activeTab: string }).activeTab = "clans";
+      const clanTable = getClanTable();
+      expect(clanTable).toBeTruthy();
+      await clanTable!.loadClanLeaderboard();
+      await clanTable!.updateComplete;
+
+      const allHeaders = modal.querySelectorAll("th");
+      let winScoreHeader: Element | null = null;
+      let lossScoreHeader: Element | null = null;
+
+      // Find the headers by their text content and title attribute
+      allHeaders.forEach((th) => {
+        const title = th.getAttribute("title");
+        if (title?.includes("Weighted wins")) {
+          winScoreHeader = th;
+        } else if (title?.includes("Weighted losses")) {
+          lossScoreHeader = th;
+        }
+      });
+
+      // Assert that headers exist with correct tooltip text
+      expect(winScoreHeader).toBeTruthy();
+      expect(lossScoreHeader).toBeTruthy();
+
+      expect(winScoreHeader!.getAttribute("title")).toBe(
+        "Weighted wins based on clan participation and match difficulty",
+      );
+      expect(lossScoreHeader!.getAttribute("title")).toBe(
+        "Weighted losses based on clan participation and match difficulty",
+      );
+    });
+
+    it("should use translateText for tooltip internationalization", async () => {
+      // Verify translation keys are correct
+      const { translateText } = await import("../../src/client/Utils");
+
+      expect(translateText("leaderboard_modal.win_score_tooltip")).toBe(
+        "Weighted wins based on clan participation and match difficulty",
+      );
+      expect(translateText("leaderboard_modal.loss_score_tooltip")).toBe(
+        "Weighted losses based on clan participation and match difficulty",
+      );
+    });
+  });
+
+  describe("Player Data Mapping", () => {
+    it("should map ranked leaderboard data and set current user entry", async () => {
+      const { getUserMe } = await import("../../src/client/Api");
+      (getUserMe as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        player: { publicId: "player-2" },
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          "1v1": [
+            {
+              rank: 1,
+              elo: 1200,
+              peakElo: 1300,
+              wins: 6,
+              losses: 4,
+              total: 10,
+              public_id: "player-1",
+              accountUsername: "alpha.4821",
+            },
+            {
+              rank: 2,
+              elo: 1100,
+              peakElo: 1250,
+              wins: 4,
+              losses: 6,
+              total: 10,
+              public_id: "player-2",
+              accountUsername: null,
+            },
+          ],
+          "2v2": [],
+        }),
+      });
+
+      const playerList = getPlayerList();
+      expect(playerList).toBeTruthy();
+      await playerList!.loadPlayerLeaderboard(true);
+      await playerList!.updateComplete;
+
+      const playerData = playerList!.playerData;
+
+      expect(playerData).toHaveLength(2);
+      expect(playerData[0]).toEqual(
+        expect.objectContaining({
+          playerId: "player-1",
+          accountUsername: "alpha.4821",
+          elo: 1200,
+          games: 10,
+          wins: 6,
+          losses: 4,
+          winRate: 0.6,
+        }),
+      );
+      // No account username: the player-name component displays public_id.
+      expect(playerData[1]).toEqual(
+        expect.objectContaining({
+          playerId: "player-2",
+          accountUsername: null,
+          winRate: 0.4,
+        }),
+      );
+      expect(playerList!.currentUserEntry?.playerId).toBe("player-2");
+      expect(modal.textContent).toContain("player-2");
+    });
+
+    // The pinned "your ranking" row has to stay inside the table — its column
+    // widths come from the table's own colgroup, so anything rendered outside
+    // it goes out of alignment the moment the modal is resized. The cell count
+    // is what breaks if a column is added to the header and not the footer.
+    it("pins the user row as a tfoot inside the table", async () => {
+      const { getUserMe } = await import("../../src/client/Api");
+      (getUserMe as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        player: { publicId: "player-1" },
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [
+            {
+              rank: 1,
+              elo: 1200,
+              peakElo: 1300,
+              wins: 6,
+              losses: 4,
+              total: 10,
+              public_id: "player-1",
+              accountUsername: "alpha.4821",
+            },
+          ],
+          "2v2": [],
+        }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      // jsdom has no layout, so the scroll-position check that normally drives
+      // this always concludes the user's own row is on screen. Force it on.
+      playerList.showStickyUser = true;
+      await playerList.updateComplete;
+
+      const table = modal.querySelector("leaderboard-player-list table")!;
+      const tfoot = table.querySelector(":scope > tfoot");
+      expect(tfoot).toBeTruthy();
+      expect(tfoot!.querySelectorAll("td")).toHaveLength(
+        table.querySelectorAll("thead th").length,
+      );
+    });
+
+    // opacity leaves the row in flow: hiding it that way reserved a row of
+    // blank space at the end of the table.
+    it("removes the pinned row from the table when it is not showing", async () => {
+      const { getUserMe } = await import("../../src/client/Api");
+      (getUserMe as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        player: { publicId: "player-1" },
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [
+            {
+              rank: 1,
+              elo: 1200,
+              peakElo: 1300,
+              wins: 6,
+              losses: 4,
+              total: 10,
+              public_id: "player-1",
+              accountUsername: "alpha.4821",
+            },
+          ],
+          "2v2": [],
+        }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      playerList.showStickyUser = false;
+      await playerList.updateComplete;
+
+      expect(playerList.currentUserEntry?.playerId).toBe("player-1");
+      expect(
+        modal.querySelector("leaderboard-player-list table tfoot"),
+      ).toBeNull();
+    });
+  });
+
+  describe("Player Pagination", () => {
+    const rankedPage = (count: number, startRank: number) => ({
+      "1v1": Array.from({ length: count }, (_, i) => ({
+        rank: startRank + i,
+        elo: 2000 - (startRank + i),
+        peakElo: 2000,
+        wins: 5,
+        losses: 5,
+        total: 10,
+        public_id: `player-${startRank + i}`,
+        accountUsername: null,
+      })),
+      "2v2": [],
+    });
+
+    // The body the API actually sends for a page past the end.
+    const pastEnd = jsonRes(
+      { error: "Bad request", message: "Page must be between 1 and 2" },
+      false,
+      400,
+    );
+
+    it("stops paging past the last page without showing an error", async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock
+        .mockResolvedValueOnce(jsonRes(rankedPage(50, 1)))
+        .mockResolvedValueOnce(pastEnd);
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+      expect(playerList.playerData).toHaveLength(50);
+
+      await playerList.loadPlayerLeaderboard();
+      await playerList.updateComplete;
+
+      expect(playerList.playerData).toHaveLength(50);
+      expect(modal.textContent).not.toContain("Try Again");
+
+      // The end of the list is sticky: no further requests are made.
+      const callCount = fetchMock.mock.calls.length;
+      await playerList.loadPlayerLeaderboard();
+      expect(fetchMock.mock.calls.length).toBe(callCount);
+    });
+
+    it("stops paging on a short page", async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(jsonRes(rankedPage(20, 1)));
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+
+      const callCount = fetchMock.mock.calls.length;
+      await playerList.loadPlayerLeaderboard();
+      expect(fetchMock.mock.calls.length).toBe(callCount);
+      expect(modal.textContent).not.toContain("Try Again");
+    });
+
+    // Only the page-bounds 400 means "end of data".
+    it.each([
+      ["500", jsonRes({}, false, 500)],
+      ["unrelated 400", jsonRes({ error: "Bad request" }, false, 400)],
+      [
+        "400 mentioning a page",
+        jsonRes(
+          { error: "Bad request", message: "Invalid page parameter" },
+          false,
+          400,
+        ),
+      ],
+    ])("shows Try Again when a page genuinely fails (%s)", async (_, bad) => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock
+        .mockResolvedValueOnce(jsonRes(rankedPage(50, 1)))
+        .mockResolvedValueOnce(bad);
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+
+      await playerList.loadPlayerLeaderboard();
+      await playerList.updateComplete;
+
+      expect(modal.textContent).toContain("Try Again");
+    });
+  });
+
+  // 1v1 and 2v2 are independent ladders returned by one request: same player,
+  // own rank and elo on each, own end of list.
+  describe("Ranked ladders", () => {
+    const entry = (rank: number, publicId: string, elo: number) => ({
+      rank,
+      elo,
+      peakElo: elo,
+      wins: 1,
+      losses: 1,
+      total: 2,
+      public_id: publicId,
+      accountUsername: publicId,
+    });
+
+    it("ranks a player separately on each ladder", async () => {
+      const { getUserMe } = await import("../../src/client/Api");
+      (getUserMe as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        player: { publicId: "player-2" },
+      });
+
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "player-1", 1200), entry(2, "player-2", 1100)],
+          "2v2": [entry(1, "player-2", 1500), entry(2, "player-3", 1400)],
+        }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+
+      expect(playerList.rankedType).toBe(RankedType.OneVOne);
+      expect(playerList.playerData.map((p) => p.playerId)).toEqual([
+        "player-1",
+        "player-2",
+      ]);
+      expect(playerList.playerData[1].elo).toBe(1100);
+      expect(playerList.currentUserEntry?.playerId).toBe("player-2");
+
+      // One request filled both ladders, so switching tabs must not refetch.
+      const callCount = fetchMock.mock.calls.length;
+      const twoVTwo = await showLadder("players2v2");
+
+      expect(twoVTwo.rankedType).toBe(RankedType.TwoVTwo);
+      expect(twoVTwo.playerData.map((p) => p.playerId)).toEqual([
+        "player-2",
+        "player-3",
+      ]);
+      // Same player, other ladder: rank 1 at 1500 rather than rank 2 at 1100.
+      expect(twoVTwo.playerData[0].rank).toBe(1);
+      expect(twoVTwo.playerData[0].elo).toBe(1500);
+      expect(twoVTwo.currentUserEntry?.playerId).toBe("player-2");
+      expect(fetchMock.mock.calls.length).toBe(callCount);
+    });
+
+    it("shows the FFA ladder from the same request", async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "player-1", 1200)],
+          "2v2": [],
+          ffa: [entry(1, "player-4", 1300), entry(2, "player-1", 1250)],
+        }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      const callCount = fetchMock.mock.calls.length;
+      const ffa = await showLadder("playersFfa");
+
+      expect(ffa.rankedType).toBe(RankedType.FreeForAll);
+      expect(ffa.playerData.map((p) => p.playerId)).toEqual([
+        "player-4",
+        "player-1",
+      ]);
+      expect(fetchMock.mock.calls.length).toBe(callCount);
+    });
+
+    it("shows an empty FFA ladder when the API has none", async () => {
+      // An API deployed before ranked FFA omits the key.
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        jsonRes({ "1v1": [entry(1, "player-1", 1200)], "2v2": [] }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      const ffa = await showLadder("playersFfa");
+
+      expect(ffa.playerData).toEqual([]);
+      expect(modal.textContent).toContain("No ranked games on this ladder");
+    });
+
+    // The 2v2 board starts empty and has no backfill, so an empty ladder is a
+    // normal state rather than a failure.
+    it("shows a no data state for an empty ladder", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        jsonRes({ "1v1": [entry(1, "player-1", 1200)], "2v2": [] }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await showLadder("players2v2");
+
+      expect(modal.textContent).toContain("No data yet");
+      expect(modal.textContent).toContain("No ranked games on this ladder");
+      expect(modal.querySelector("leaderboard-player-list table")).toBeNull();
+    });
+
+    it("pages the ladders independently", async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        jsonRes({
+          "1v1": Array.from({ length: 50 }, (_, i) =>
+            entry(i + 1, `solo-${i + 1}`, 2000 - i),
+          ),
+          // Short page: the younger ladder ends first.
+          "2v2": [entry(1, "duo-1", 1500)],
+        }),
+      );
+
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+      expect(playerList.playerData).toHaveLength(50);
+
+      fetchMock.mockResolvedValueOnce(
+        jsonRes({ "1v1": [entry(51, "solo-51", 1900)], "2v2": [] }),
+      );
+      await playerList.loadPlayerLeaderboard();
+      await playerList.updateComplete;
+
+      expect(playerList.playerData).toHaveLength(51);
+      expect(fetchMock.mock.calls[1][0]).toContain("page=2");
+
+      // The exhausted ladder keeps its row and stops asking for pages.
+      const twoVTwo = await showLadder("players2v2");
+      expect(twoVTwo.playerData.map((p) => p.playerId)).toEqual(["duo-1"]);
+
+      const callCount = fetchMock.mock.calls.length;
+      await twoVTwo.loadPlayerLeaderboard();
+      expect(fetchMock.mock.calls.length).toBe(callCount);
+    });
+
+    it("selects the 2v2 ladder from its tab", async () => {
+      // The tab click also prefetches the clan and tribe tabs, so route by
+      // URL: a blanket resolved value would feed them ladder-shaped JSON and
+      // crash their renders after the test ends.
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(
+        async (input: any) => {
+          const url =
+            typeof input === "string" ? input : (input?.url ?? String(input));
+          if (url.includes("/leaderboard/ranked")) {
+            return jsonRes({ "1v1": [], "2v2": [] });
+          }
+          return jsonRes({}, false, 404);
+        },
+      );
+
+      modal.inline = true;
+      await modal.updateComplete;
+      const oModal = modal.querySelector("o-modal");
+      await (oModal as unknown as { updateComplete: Promise<unknown> })
+        .updateComplete;
+      const tab = oModal!.shadowRoot!.querySelector(
+        'button[role="tab"][data-key="players2v2"]',
+      );
+      expect(tab).toBeTruthy();
+
+      tab!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect((modal as unknown as { activeTab: string }).activeTab).toBe(
+        "players2v2",
+      );
+      await modal.updateComplete;
+      expect(getPlayerList()!.rankedType).toBe(RankedType.TwoVTwo);
+    });
+  });
+
+  describe("FFA rating tab", () => {
+    const entry = (rank: number, publicId: string, elo: number) => ({
+      rank,
+      elo,
+      peakElo: elo,
+      wins: 1,
+      losses: 1,
+      total: 2,
+      public_id: publicId,
+      accountUsername: publicId,
+    });
+    const rated = (rank: number, id: string, elo: number, tier: string) => ({
+      ...entry(rank, id, elo),
+      uncertainty: 61.2,
+      tier,
+    });
+    const ratingHeader = () =>
+      modal.querySelectorAll("leaderboard-player-list thead th")[2].textContent;
+    const fetchMock = () => global.fetch as ReturnType<typeof vi.fn>;
+    /** A linked login: only these accounts are ever rated. */
+    const linked = { email: "me@example.com" };
+    const meOnce = async (me: unknown) => {
+      const { getUserMe } = await import("../../src/client/Api");
+      vi.mocked(getUserMe).mockResolvedValueOnce(me as never);
+    };
+
+    /** What the selected rank tab answers on its next load. */
+    const rankOnce = async (players: unknown[]) => {
+      const { fetchFfaRankLeaderboard } = await import("../../src/client/Api");
+      vi.mocked(fetchFfaRankLeaderboard).mockResolvedValueOnce({
+        players,
+      } as never);
+    };
+
+    const ffaTabLabel = () =>
+      (
+        modal as unknown as {
+          modalConfig(): { tabs: { key: string; label: string }[] };
+        }
+      )
+        .modalConfig()
+        .tabs.find((t) => t.key === "playersFfa")!.label;
+
+    it("keeps the FFA Ranked label while the board is the Elo ladder", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({ "1v1": [], "2v2": [], ffa: [entry(1, "p4", 1500)] }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await modal.updateComplete;
+      expect(ffaTabLabel()).toBe("FFA Ranked");
+    });
+
+    it("labels the FFA tab FFA Rating once the board carries ratings", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "p1", 1200)],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await modal.updateComplete;
+      expect(ffaTabLabel()).toBe("FFA Rating");
+      // And the rendered modal got the new label, not just modalConfig().
+      const rendered = modal.querySelector("o-modal") as unknown as {
+        tabs: { key: string; label: string }[];
+      };
+      expect(rendered.tabs.find((t) => t.key === "playersFfa")!.label).toBe(
+        "FFA Rating",
+      );
+    });
+
+    it("shows a tier badge and rating ± on the FFA tab only", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "p1", 1200)],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await rankOnce([rated(1, "p4", 2012.6, "Diamond II")]);
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await getPlayerList()!.updateComplete;
+      expect(modal.querySelectorAll("ffa-tier-badge")).toHaveLength(0); // 1v1 tab
+      expect(modal.querySelector("ofstats-credit")).toBeNull();
+      expect(ratingHeader()).toContain("Elo");
+
+      await showLadder("playersFfa");
+      const cell = modal.querySelector("[data-ffa-rating-cell]")!;
+      expect(cell.querySelector<FfaTierBadge>("ffa-tier-badge")!.tier).toBe(
+        "Diamond II",
+      );
+      expect(cell.textContent).toContain("2013");
+      expect(cell.textContent).toContain("± 61");
+      expect(ratingHeader()).toContain("Rating");
+      expect(modal.querySelector("ofstats-credit")).not.toBeNull();
+    });
+
+    it("rounds the rating of a row whose tier was dropped on a live board", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [
+            rated(1, "p4", 2012.6, "Diamond II"),
+            // The schema drops a malformed tier (the mocked fetch here skips
+            // it), so such a row arrives with no tier and an unrounded Elo.
+            entry(2, "p5", 1850.7),
+          ],
+        }),
+      );
+      await rankOnce([
+        rated(1, "p4", 2012.6, "Diamond II"),
+        entry(2, "p5", 1850.7),
+      ]);
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelectorAll("[data-ffa-rating-cell]")).toHaveLength(1);
+      const text = modal.querySelector(
+        "leaderboard-player-list tbody",
+      )!.textContent!;
+      expect(text).toContain("1851");
+      expect(text).not.toContain("1850.7");
+    });
+
+    it("shows the frozen FFA ladder plainly", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({ "1v1": [], "2v2": [], ffa: [entry(1, "p4", 1300)] }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("ffa-tier-badge")).toBeNull();
+      expect(modal.querySelector("[data-ffa-rating-cell]")).toBeNull();
+      expect(modal.querySelector("ofstats-credit")).toBeNull();
+      expect(ratingHeader()).toContain("Elo");
+      const cols = modal.querySelectorAll<HTMLElement>(
+        "leaderboard-player-list col",
+      );
+      expect(cols[2].style.width).toBe("6rem");
+    });
+
+    it("widens the rating column, less on phones, once rows carry a tier", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await rankOnce([rated(1, "p4", 2012.6, "Diamond II")]);
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const cols = modal.querySelectorAll<HTMLElement>(
+        "leaderboard-player-list col",
+      );
+      expect(cols[2].style.width).toBe("");
+      // From sm up, room for the widest badge (emblem + GRANDMASTER) beside
+      // the rating; on a phone the badge shows only the division.
+      expect(cols[2].classList).toContain("w-32");
+      expect(cols[2].classList).toContain("sm:w-60");
+      // The rating and its uncertainty never wrap apart.
+      const cell = modal.querySelector("[data-ffa-rating-cell]")!;
+      const value = cell.querySelector("[data-ffa-rating-value]")!;
+      expect(value.classList).toContain("whitespace-nowrap");
+      expect(value.textContent).toContain("± 61");
+    });
+
+    it("labels a live FFA board with its season, and only that board", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "p1", 1200)],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+          ffaSeason: { number: 1, startDate: "2026-11-09" },
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      expect(modal.querySelector("[data-ffa-season]")).toBeNull(); // 1v1 tab
+      await showLadder("playersFfa");
+      const label = modal.querySelector("[data-ffa-season]")!;
+      expect(label.textContent).toContain("ffa_rating.season");
+      expect(label.textContent).toContain("ffa_rating.season_started");
+    });
+
+    it("shows a season's dates, days left and progress once it has an end", async () => {
+      vi.useFakeTimers({
+        now: new Date("2026-11-29T12:00:00Z"),
+        toFake: ["Date"],
+      });
+      try {
+        fetchMock().mockResolvedValueOnce(
+          jsonRes({
+            "1v1": [],
+            "2v2": [],
+            ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+            ffaSeason: {
+              number: 1,
+              startDate: "2026-11-09",
+              endDate: "2026-12-20",
+            },
+          }),
+        );
+        await getPlayerList()!.loadPlayerLeaderboard(true);
+        await showLadder("playersFfa");
+        const label = modal.querySelector("[data-ffa-season]")!;
+        expect(label.textContent).toContain("ffa_rating.season_dates");
+        expect(label.textContent).toContain("ffa_rating.season_days_left");
+        expect(label.textContent).not.toContain("ffa_rating.season_started");
+        const bar = label.querySelector<HTMLElement>(
+          "[data-ffa-season-progress]",
+        )!;
+        expect(bar.style.width).toBe("50%");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("says it's the last day on a season's last day", async () => {
+      vi.useFakeTimers({
+        now: new Date("2026-12-20T12:00:00Z"),
+        toFake: ["Date"],
+      });
+      try {
+        fetchMock().mockResolvedValueOnce(
+          jsonRes({
+            "1v1": [],
+            "2v2": [],
+            ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+            ffaSeason: {
+              number: 1,
+              startDate: "2026-11-09",
+              endDate: "2026-12-20",
+            },
+          }),
+        );
+        await getPlayerList()!.loadPlayerLeaderboard(true);
+        await showLadder("playersFfa");
+        const label = modal.querySelector("[data-ffa-season]")!;
+        expect(label.textContent).toContain("ffa_rating.season_last_day");
+        expect(label.textContent).toContain(
+          "ffa_rating.season_ends_midnight_utc",
+        );
+        expect(label.textContent).not.toContain("ffa_rating.season_days_left");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("shows only the start when no next season is scheduled", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+          ffaSeason: { number: 1, startDate: "2026-11-09", endDate: null },
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const label = modal.querySelector("[data-ffa-season]")!;
+      expect(label.textContent).toContain("ffa_rating.season_started");
+      expect(label.textContent).toContain("ffa_rating.season_in_progress");
+      expect(label.textContent).toContain("ffa_rating.season_no_end_date");
+      expect(label.querySelector("[data-ffa-season-progress]")).toBeNull();
+    });
+
+    it("shows no banner for a season whose dates are reversed", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+          ffaSeason: {
+            number: 1,
+            startDate: "2026-11-09",
+            endDate: "2026-11-08",
+          },
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-season]")).toBeNull();
+    });
+
+    it("drops the banner on a fresh load once the season has ended", async () => {
+      const page = (ffaSeason?: unknown) =>
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+          ...(ffaSeason ? { ffaSeason } : {}),
+        });
+      fetchMock().mockResolvedValueOnce(
+        page({ number: 1, startDate: "2026-11-09", endDate: "2027-02-06" }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-season]")).not.toBeNull();
+
+      // Between seasons the API sends none.
+      fetchMock().mockResolvedValueOnce(page());
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await getPlayerList()!.updateComplete;
+      expect(modal.querySelector("[data-ffa-season]")).toBeNull();
+    });
+
+    it("shows no season label when the API sends none", async () => {
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-season]")).toBeNull();
+    });
+
+    it("pins a hidden player's row with the note saying why", async () => {
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          username: "me.1",
+          leaderboard: {
+            ffa: {
+              elo: 2240.4,
+              uncertainty: 61.2,
+              tier: "Master I",
+              games: 410,
+              wins: 66,
+              peak: 2300,
+              hiddenByUncertainty: true,
+            },
+          },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const row = modal.querySelector("tfoot [data-ffa-hidden-row]")!;
+      expect(row.textContent).toContain("—");
+      expect(row.textContent).toContain("2240");
+      expect(row.textContent).toContain("± 61");
+      expect(row.textContent).toContain("410");
+      expect(row.textContent).toContain("16.1%");
+      const note = modal.querySelector("tfoot [data-ffa-hidden-note]")!;
+      expect(note.textContent).toContain("ffa_rating.off_board_note");
+      // No calibrating row beside it.
+      expect(modal.querySelector("[data-ffa-calibrating-row]")).toBeNull();
+    });
+
+    it("shows a hidden player as rated when the whole board is empty", async () => {
+      // Right after a season reset, every top player can be over the ± limit.
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          username: "me.1",
+          leaderboard: {
+            ffa: {
+              elo: 2240.4,
+              uncertainty: 61.2,
+              tier: "Master I",
+              games: 410,
+              wins: 66,
+              peak: 2300,
+              hiddenByUncertainty: true,
+            },
+          },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [],
+          ffaSeason: { number: 1, startDate: "2026-11-09" },
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const row = modal.querySelector("tfoot [data-ffa-hidden-row]")!;
+      expect(row.querySelector("ffa-tier-badge")).not.toBeNull();
+      expect(row.textContent).toContain("2240");
+      expect(row.textContent).not.toContain("2240.4");
+      expect(row.textContent).toContain("± 61");
+      expect(modal.querySelector("[data-ffa-season]")).not.toBeNull();
+      await modal.updateComplete;
+      expect(ffaTabLabel()).toBe("FFA Rating");
+    });
+
+    it("pins no note for a rated player on the board", async () => {
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          username: "me.1",
+          leaderboard: {
+            ffa: {
+              elo: 2012.6,
+              uncertainty: 40,
+              tier: "Diamond II",
+              games: 50,
+              wins: 5,
+              peak: 2100,
+            },
+          },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "me", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-hidden-row]")).toBeNull();
+      expect(modal.querySelector("[data-ffa-hidden-note]")).toBeNull();
+    });
+
+    it("pins the calibrating row even when the FFA board is empty", async () => {
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          username: "me.1",
+          leaderboard: { ffa: { games: 2, wins: 0, calibrationGames: 2 } },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({ "1v1": [entry(1, "p1", 1200)], "2v2": [], ffa: [] }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const row = modal.querySelector("tfoot [data-ffa-calibrating-row]")!;
+      expect(
+        row.querySelector<FfaTierBadge>("ffa-tier-badge")!.calibrationGames,
+      ).toBe(2);
+      // The 2v2 board is empty too, and no one is calibrating there.
+      await showLadder("players2v2");
+      expect(modal.querySelector("[data-ffa-calibrating-row]")).toBeNull();
+    });
+
+    it("pins a calibrating row for a signed-in player not on the board", async () => {
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          username: "me.1",
+          leaderboard: { ffa: { games: 4, wins: 1, calibrationGames: 4 } },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "p1", 1200)],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await getPlayerList()!.updateComplete;
+      expect(modal.querySelector("[data-ffa-calibrating-row]")).toBeNull(); // 1v1 tab
+      await showLadder("playersFfa");
+      const row = modal.querySelector("tfoot [data-ffa-calibrating-row]")!;
+      expect(
+        row.querySelector<FfaTierBadge>("ffa-tier-badge")!.calibrationGames,
+      ).toBe(4);
+      const cells = row.querySelectorAll("td");
+      expect(cells).toHaveLength(5);
+      expect(cells[0].textContent).toContain("—");
+      expect(cells[1].textContent).toContain("Your ranking");
+      expect(cells[1].querySelector("player-name")).not.toBeNull();
+      expect(cells[3].textContent).toContain("4");
+      expect(cells[4].textContent).toContain("25.0%");
+    });
+
+    it("shows a dash win ratio for a calibrating player with no games", async () => {
+      await meOnce({
+        user: linked,
+        player: {
+          publicId: "me",
+          leaderboard: { ffa: { calibrationGames: 0 } },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      const cells = modal.querySelectorAll(
+        "tfoot [data-ffa-calibrating-row] td",
+      );
+      expect(cells[3].textContent).toContain("0");
+      expect(cells[4].textContent).toContain("—");
+    });
+
+    it("pins no calibrating row for a guest, who is never rated", async () => {
+      // The API answers {calibrationGames:0} for any account with no rating
+      // row, guests included.
+      await meOnce({
+        user: {},
+        player: {
+          publicId: "guest",
+          leaderboard: { ffa: { calibrationGames: 0 } },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-calibrating-row]")).toBeNull();
+    });
+
+    it("pins a calibrating row for a game-portal account", async () => {
+      const { gamePortal } = await import("../../src/client/GamePortal");
+      const onPortal = vi
+        .spyOn(gamePortal, "isOnGamePortal")
+        .mockReturnValue(true);
+      const profile = vi
+        .spyOn(gamePortal, "getUserProfile")
+        .mockResolvedValue({} as never);
+      try {
+        await meOnce({
+          user: {},
+          player: {
+            publicId: "me",
+            leaderboard: { ffa: { calibrationGames: 1 } },
+          },
+        });
+        fetchMock().mockResolvedValueOnce(
+          jsonRes({
+            "1v1": [],
+            "2v2": [],
+            ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+          }),
+        );
+        await getPlayerList()!.loadPlayerLeaderboard(true);
+        await showLadder("playersFfa");
+        expect(
+          modal.querySelector("tfoot [data-ffa-calibrating-row]"),
+        ).not.toBeNull();
+      } finally {
+        onPortal.mockRestore();
+        profile.mockRestore();
+      }
+    });
+
+    it("pins no calibrating row for a listed player", async () => {
+      await meOnce({
+        player: {
+          publicId: "p4",
+          leaderboard: {
+            ffa: { elo: 2012.6, tier: "Diamond II", games: 40, wins: 9 },
+          },
+        },
+      });
+      fetchMock().mockResolvedValueOnce(
+        jsonRes({
+          "1v1": [entry(1, "p1", 1200)],
+          "2v2": [],
+          ffa: [rated(1, "p4", 2012.6, "Diamond II")],
+        }),
+      );
+      await getPlayerList()!.loadPlayerLeaderboard(true);
+      await showLadder("playersFfa");
+      expect(modal.querySelector("[data-ffa-calibrating-row]")).toBeNull();
+    });
+  });
+
+  describe("Level badges", () => {
+    type Level = { level: number; prestige: number; legend: boolean };
+    const entry = (rank: number, publicId: string, level?: Level) => ({
+      rank,
+      elo: 1500 - rank,
+      peakElo: 1500,
+      wins: 1,
+      losses: 1,
+      total: 2,
+      public_id: publicId,
+      accountUsername: publicId,
+      ...level,
+    });
+    const prestiged: Level = { level: 12, prestige: 2, legend: false };
+    const legend: Level = { level: 100, prestige: 10, legend: true };
+    const unprestiged: Level = { level: 80, prestige: 0, legend: false };
+
+    const load = async (
+      ladders: Record<string, unknown>,
+      userPublicId?: string,
+    ) => {
+      if (userPublicId) {
+        const { getUserMe } = await import("../../src/client/Api");
+        (getUserMe as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          player: { publicId: userPublicId },
+        });
+      }
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        jsonRes({ "1v1": [], "2v2": [], ...ladders }),
+      );
+      const playerList = getPlayerList()!;
+      await playerList.loadPlayerLeaderboard(true);
+      await playerList.updateComplete;
+      return playerList;
+    };
+
+    // The name cell's leading element, keyed by the row's public id: "badge",
+    // "slot", or "name" when the name comes first.
+    const leading = (root: Element | null) =>
+      Object.fromEntries(
+        Array.from(root?.querySelectorAll("tr") ?? []).map((tr) => {
+          const name = tr.querySelector("player-name") as
+            | (Element & { publicId: string })
+            | null;
+          const first = name?.parentElement?.firstElementChild;
+          const kind =
+            first?.tagName === "LEVEL-BADGE"
+              ? "badge"
+              : first?.hasAttribute("data-level-slot")
+                ? "slot"
+                : "name";
+          return [name?.publicId, kind];
+        }),
+      );
+    const tbody = () => modal.querySelector("leaderboard-player-list tbody");
+
+    it("badges prestiged players and Legends in front of the name, with a slot for the rest", async () => {
+      await load({
+        "1v1": [
+          entry(1, "p-legend", legend),
+          entry(2, "p-prestiged", prestiged),
+          entry(3, "p-zero", unprestiged),
+          entry(4, "p-none"),
+        ],
+      });
+
+      expect(leading(tbody())).toEqual({
+        "p-legend": "badge",
+        "p-prestiged": "badge",
+        "p-zero": "slot",
+        "p-none": "slot",
+      });
+      const badges = tbody()!.querySelectorAll("level-badge");
+      const [legendBadge, prestigeBadge] = Array.from(badges) as Array<
+        Element & { level: number; prestige: number; legend: boolean }
+      >;
+      expect(legendBadge.legend).toBe(true);
+      expect(prestigeBadge).toMatchObject({ level: 12, prestige: 2 });
+      expect(prestigeBadge.getAttribute("size")).toBe("24");
+
+      const slot = tbody()!.querySelector("[data-level-slot]")!;
+      expect(slot.getAttribute("aria-hidden")).toBe("true");
+      expect((slot as HTMLElement).style.width).toBe("24px");
+    });
+
+    it("leaves the board unchanged when no row has a badge", async () => {
+      await load({
+        "1v1": [entry(1, "p-zero", unprestiged), entry(2, "p-none")],
+      });
+
+      expect(leading(tbody())).toEqual({ "p-zero": "name", "p-none": "name" });
+      expect(tbody()!.querySelector("level-badge")).toBeNull();
+    });
+
+    it("decides the slot per ladder", async () => {
+      await load({
+        "1v1": [entry(1, "p-prestiged", prestiged), entry(2, "p-none")],
+        "2v2": [entry(1, "duo-zero", unprestiged), entry(2, "duo-none")],
+      });
+      expect(leading(tbody())).toEqual({
+        "p-prestiged": "badge",
+        "p-none": "slot",
+      });
+
+      await showLadder("players2v2");
+      expect(leading(tbody())).toEqual({
+        "duo-zero": "name",
+        "duo-none": "name",
+      });
+    });
+
+    it("badges the pinned row of a prestiged player", async () => {
+      const playerList = await load(
+        { "1v1": [entry(1, "p-prestiged", prestiged)] },
+        "p-prestiged",
+      );
+      playerList.showStickyUser = true;
+      await playerList.updateComplete;
+
+      const tfoot = modal.querySelector("leaderboard-player-list tfoot");
+      expect(leading(tfoot)).toEqual({ "p-prestiged": "badge" });
+    });
+
+    it("keeps a slot on the pinned row when only other rows have badges", async () => {
+      const playerList = await load(
+        {
+          "1v1": [entry(1, "p-prestiged", prestiged), entry(2, "p-zero")],
+        },
+        "p-zero",
+      );
+      playerList.showStickyUser = true;
+      await playerList.updateComplete;
+
+      const tfoot = modal.querySelector("leaderboard-player-list tfoot");
+      expect(leading(tfoot)).toEqual({ "p-zero": "slot" });
+    });
+
+    it("shows no badge for a row whose level fields were malformed", async () => {
+      // Through the real schema: one bad row loses its badge, not the ladder.
+      const ladder = RankedLeaderboardResponseSchema.parse({
+        "1v1": [
+          entry(1, "p-prestiged", prestiged),
+          { ...entry(2, "p-bad-legend", prestiged), legend: 1 },
+          { ...entry(3, "p-level-zero", prestiged), level: 0 },
+          { ...entry(4, "p-null-prestige", legend), prestige: null },
+        ],
+      });
+      await load(ladder);
+
+      expect(leading(tbody())).toEqual({
+        "p-prestiged": "badge",
+        "p-bad-legend": "slot",
+        "p-level-zero": "slot",
+        "p-null-prestige": "slot",
+      });
+    });
+
+    it("staggers the badges and lets the names shrink beside them", async () => {
+      const playerList = await load(
+        { "1v1": [entry(1, "p-prestiged", prestiged), entry(2, "p-zero")] },
+        "p-zero",
+      );
+      playerList.showStickyUser = true;
+      await playerList.updateComplete;
+
+      expect(
+        tbody()!.querySelector("level-badge")!.hasAttribute("stagger"),
+      ).toBe(true);
+      // A flex item's min-width defaults to its content, which would stop the
+      // truncating name from shrinking beside the badge.
+      const names = modal.querySelectorAll(
+        "leaderboard-player-list player-name",
+      );
+      expect(names.length).toBe(3);
+      for (const name of Array.from(names)) {
+        expect(name.classList.contains("min-w-0")).toBe(true);
+      }
+    });
+
+    it("leaves the pinned row unchanged when no row has a badge", async () => {
+      const playerList = await load(
+        { "1v1": [entry(1, "p-zero", unprestiged)] },
+        "p-zero",
+      );
+      playerList.showStickyUser = true;
+      await playerList.updateComplete;
+
+      const tfoot = modal.querySelector("leaderboard-player-list tfoot");
+      expect(leading(tfoot)).toEqual({ "p-zero": "name" });
+    });
+  });
+
+  describe("Modal Functionality", () => {
+    it("should initialize with default state", () => {
+      expect(modal).toBeTruthy();
+      expect((modal as unknown as { activeTab: string }).activeTab).toBe(
+        "players",
+      );
+    });
+
+    it("should be a custom element", () => {
+      expect(modal).toBeInstanceOf(LeaderboardModal);
+      expect(modal.tagName.toLowerCase()).toBe("leaderboard-modal");
+    });
+
+    it("should close on Escape when open", async () => {
+      const mockModalEl = { open: vi.fn(), close: vi.fn() };
+      Object.defineProperty(modal, "modalEl", {
+        get: () => mockModalEl,
+        configurable: true,
+      });
+      (modal as unknown as { onOpen: () => void }).onOpen = vi.fn();
+
+      modal.open();
+      expect((modal as unknown as { isModalOpen: boolean }).isModalOpen).toBe(
+        true,
+      );
+
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      // handleKeyDown awaits confirmBeforeClose() before closing, so the close
+      // is deferred to a later microtask — flush it before asserting.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect((modal as unknown as { isModalOpen: boolean }).isModalOpen).toBe(
+        false,
+      );
+      expect(mockModalEl.close).toHaveBeenCalled();
+    });
+  });
+
+  describe("Modal Interaction", () => {
+    it("should switch to clans tab and request clan leaderboard data", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          start: "2025-01-01T00:00:00Z",
+          end: "2025-01-07T23:59:59Z",
+          clans: [],
+        }),
+      });
+
+      modal.inline = true;
+      await modal.updateComplete;
+      const oModal = modal.querySelector("o-modal");
+      await (oModal as unknown as { updateComplete: Promise<unknown> })
+        .updateComplete;
+      const tab = oModal!.shadowRoot!.querySelector(
+        'button[role="tab"][data-key="clans"]',
+      );
+      expect(tab).toBeTruthy();
+
+      tab!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect((modal as unknown as { activeTab: string }).activeTab).toBe(
+        "clans",
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        "http://localhost:3000/public/clans/leaderboard",
+        { headers: { Accept: "application/json" } },
+      );
+      await Promise.resolve();
+      await modal.updateComplete;
+      await awaitChildUpdate("leaderboard-clan-table");
+    });
+
+    it("should render a no data state for empty clan leaderboard", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          start: "2025-01-01T00:00:00Z",
+          end: "2025-01-07T23:59:59Z",
+          clans: [],
+        }),
+      });
+
+      (modal as unknown as { activeTab: string }).activeTab = "clans";
+      const clanTable = getClanTable();
+      expect(clanTable).toBeTruthy();
+      await clanTable!.loadClanLeaderboard();
+      await clanTable!.updateComplete;
+
+      expect(modal.textContent).toContain("No data yet");
+      expect(modal.textContent).toContain("No stats");
+    });
+
+    it("should render an error state when clan leaderboard fails", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+      });
+
+      (modal as unknown as { activeTab: string }).activeTab = "clans";
+      const clanTable = getClanTable();
+      expect(clanTable).toBeTruthy();
+      await clanTable!.loadClanLeaderboard();
+      await clanTable!.updateComplete;
+
+      expect(modal.textContent).toContain("Something went wrong");
+      expect(modal.textContent).toContain("Try Again");
+    });
+
+    it("should show each clan's elo and sort unrated clans last", async () => {
+      const clan = (clanTag: string, elo: number | null) => ({
+        clanTag,
+        games: 10,
+        wins: 5,
+        losses: 5,
+        playerSessions: 20,
+        weightedWins: 5,
+        weightedLosses: 5,
+        weightedWLRatio: 1,
+        elo,
+      });
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          start: "2025-01-01T00:00:00Z",
+          end: "2025-01-07T23:59:59Z",
+          clans: [clan("NONE", null), clan("LOW", 1490), clan("HIGH", 1530)],
+        }),
+      });
+
+      (modal as unknown as { activeTab: string }).activeTab = "clans";
+      const clanTable = getClanTable();
+      await clanTable!.loadClanLeaderboard();
+      await clanTable!.updateComplete;
+
+      const rows = () =>
+        [...modal.querySelectorAll("leaderboard-clan-table tbody tr")].map(
+          (tr) =>
+            [...tr.querySelectorAll("td")].map((td) => td.textContent!.trim()),
+        );
+      expect(rows().map((r) => [r[1], r[2]])).toEqual([
+        ["NONE", "—"],
+        ["LOW", "1490"],
+        ["HIGH", "1530"],
+      ]);
+
+      const eloButton = [
+        ...modal.querySelectorAll<HTMLButtonElement>(
+          "leaderboard-clan-table th button",
+        ),
+      ].find((b) => b.textContent!.includes("Elo"))!;
+      eloButton.click();
+      await clanTable!.updateComplete;
+      expect(rows().map((r) => r[1])).toEqual(["HIGH", "LOW", "NONE"]);
+
+      eloButton.click();
+      await clanTable!.updateComplete;
+      expect(rows().map((r) => r[1])).toEqual(["LOW", "HIGH", "NONE"]);
+    });
+  });
+});

@@ -1,0 +1,195 @@
+{
+  "$schema": "../../../info.schema.json",
+  "id": "Korea",
+  "name": "Korea",
+  "translation_key": "map.korea",
+  "categories": ["asia", "countries"],
+  "location": { "lat": 36.5, "lon": 127.8 },
+  "author": "crunchybbb",
+  "description": "A mountainous peninsula located in East Asia between China and Japan. After WW2, it was divided between a communist North and a democratic South. Reunify the peninsula under your rule, larp as a mad nuke-loving North Korean dictator or play as the Japanese Empire and conquer the entire region, the choice is yours. ",
+  "special_team_count": 2,
+  "nations": [
+    {
+      "coordinates": [1270, 2361],
+      "name": "Ulsan",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [1242, 2556],
+      "name": "Busan",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [599, 3149],
+      "name": "Jeju",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [1367, 3187],
+      "name": "Nagasaki",
+      "flag": "Empire of Japan"
+    },
+    {
+      "coordinates": [1604, 3066],
+      "name": "Fukuoka",
+      "flag": "jp"
+    },
+    {
+      "coordinates": [1104, 2312],
+      "name": "Daegu",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [926, 2419],
+      "name": "South Gyeongsang",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [1078, 2112],
+      "name": "North Gyeongsang",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [713, 2667],
+      "name": "South Jeolla",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [723, 2382],
+      "name": "North Jeolla",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [731, 1832],
+      "name": "Seoul",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [842, 2310],
+      "name": "Daejeon",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [812, 2245],
+      "name": "Sejong",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [879, 2134],
+      "name": "North Chungcheong",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [639, 2229],
+      "name": "South Chungcheong",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [632, 1907],
+      "name": "Incheon",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [1001, 1835],
+      "name": "Gangwon",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [738, 2003],
+      "name": "Gyeonggi",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [597, 1726],
+      "name": "Kaesong",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [481, 1477],
+      "name": "Pyongyang",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [705, 1528],
+      "name": "North Hwanghae",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [395, 1696],
+      "name": "South Hwanghae",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [309, 1497],
+      "name": "Nampo",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [885, 1586],
+      "name": "Kangwon",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [709, 1170],
+      "name": "South Hamgyong",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [1213, 605],
+      "name": "North Hamgyong",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [932, 864],
+      "name": "Ryanggang",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [445, 1281],
+      "name": "South Pyongan",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [260, 1111],
+      "name": "North Pyongan",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [561, 919],
+      "name": "Chagang",
+      "flag": "kp"
+    },
+    {
+      "coordinates": [1601, 3242],
+      "name": "Saga",
+      "flag": "jp"
+    },
+    {
+      "coordinates": [743, 2534],
+      "name": "Gwangju",
+      "flag": "kr"
+    },
+    {
+      "coordinates": [1277, 2824],
+      "name": "Tsushima Island",
+      "flag": "jp"
+    }
+  ],
+  "teamGameSpawnAreas": {
+    "2": [
+      {
+        "height": 1900,
+        "width": 1632,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "height": 1384,
+        "width": 1632,
+        "x": 0,
+        "y": 1900
+      }
+    ]
+  },
+  "themes": ["asia"]
+}
