@@ -843,7 +843,8 @@ export class UsernameInput extends LitElement {
       <!-- The name field takes whatever the tag picker and trailing button
            leave, so the row always fills the strip. -->
       <div class="flex items-center w-full h-full gap-1.5 sm:gap-2">
-        ${this.renderClanControl()} ${this.renderNameControl()}
+        ${this.renderNameControl()}
+        <!-- MoWorld: sem seletor de TAG de clã (offline). -->
       </div>
       <!-- One positioned slot, stacked. An error and the reservation reminder
            are not alternatives: the error is transient and self-inflicted
@@ -1080,13 +1081,14 @@ export class UsernameInput extends LitElement {
       <!-- The buttons differ in width, so this resizes the name field — which
            is transparent and left-aligned, so only its invisible right edge
            moves. -->
-      <div class="no-game-portal shrink-0 h-full max-h-[44px]">
-        ${
-          this.verifiedActive
-            ? this.renderUseCustomButton()
-            : this.renderUseVerifiedButton()
-        }
-      </div>
+      <!-- MoWorld: sem "Usar verificado" (conta online). -->
+      ${
+        this.verifiedActive
+          ? html`<div class="no-game-portal shrink-0 h-full max-h-[44px]">
+              ${this.renderUseCustomButton()}
+            </div>`
+          : null
+      }
     `;
   }
 

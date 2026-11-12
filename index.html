@@ -411,37 +411,75 @@
         display: none !important;
       }
     </style>
-    <!-- OFFLINE: service worker (PWA). Baixa o jogo inteiro no primeiro acesso
-         e mostra o progresso numa barrinha; depois disso abre sem internet. -->
+    <!-- OFFLINE: service worker (PWA). Guarda o jogo no aparelho; nas
+         atualizações baixa só o que mudou. A versão nova é aplicada fora da
+         partida (recarrega a página sozinha) ou quando o jogador toca no
+         aviso, nunca no meio de um jogo. Aviso discreto no canto inferior
+         esquerdo. -->
     <script>
       if ("serviceWorker" in navigator && window.isSecureContext) {
         window.addEventListener("load", function () {
-          var bar = null;
-          function show(text, done) {
-            if (!bar) {
-              bar = document.createElement("div");
-              bar.style.cssText =
+          var sw = navigator.serviceWorker;
+          var toast = null, hideTimer = null, applying = false;
+          function show(text, opts) {
+            opts = opts || {};
+            if (!toast) {
+              toast = document.createElement("div");
+              toast.style.cssText =
                 "position:fixed;left:12px;bottom:12px;z-index:2147483647;" +
-                "background:rgba(15,23,42,.85);color:rgba(255,255,255,.85);" +
+                "background:rgba(15,23,42,.88);color:rgba(255,255,255,.88);" +
                 "font:600 11px system-ui,sans-serif;padding:5px 10px;border-radius:999px;" +
-                "border:1px solid rgba(255,255,255,.12);pointer-events:none";
-              document.body.appendChild(bar);
+                "border:1px solid rgba(255,255,255,.12)";
+              document.body.appendChild(toast);
             }
-            bar.textContent = text;
-            if (done) setTimeout(function () { bar && bar.remove(); bar = null; }, 4000);
+            toast.textContent = text;
+            toast.style.pointerEvents = opts.onClick ? "auto" : "none";
+            toast.style.cursor = opts.onClick ? "pointer" : "default";
+            toast.onclick = opts.onClick || null;
+            clearTimeout(hideTimer);
+            if (opts.hideAfter) hideTimer = setTimeout(hide, opts.hideAfter);
           }
-          var installing = !navigator.serviceWorker.controller;
-          navigator.serviceWorker.addEventListener("message", function (e) {
+          function hide() {
+            if (toast) toast.remove();
+            toast = null;
+          }
+          function inGame() {
+            return document.body.classList.contains("in-game");
+          }
+          function apply(reg) {
+            if (!reg.waiting) return;
+            applying = true;
+            show("↻ Atualizando…");
+            reg.waiting.postMessage({ type: "skip-waiting" });
+          }
+          function offerUpdate(reg) {
+            if (!reg.waiting) return;
+            if (!inGame()) return apply(reg);
+            show("Nova versão pronta · toque para atualizar", {
+              onClick: function () { apply(reg); },
+            });
+          }
+          sw.addEventListener("controllerchange", function () {
+            if (applying) location.reload();
+          });
+          sw.addEventListener("message", function (e) {
             var d = e.data || {};
-            if (d.type !== "offline-cache") return;
-            if (d.ready) {
-              if (installing) show("✓ Pronto para jogar offline", true);
-              installing = false;
-            } else if (d.total) {
-              show("↓ Offline " + Math.floor((d.done / d.total) * 100) + "%");
+            if (d.type !== "moworld-sw") return;
+            if (d.phase === "progress" && d.total) {
+              var pct = Math.floor((d.done / d.total) * 100);
+              show((d.update ? "↓ Atualizando " : "↓ Offline ") + pct + "%");
+            } else if (d.phase === "installed" && !d.update) {
+              show("✓ Pronto para jogar offline", { hideAfter: 3000 });
+            } else if (d.phase === "installed" && d.update) {
+              sw.getRegistration().then(function (reg) { reg && offerUpdate(reg); });
             }
           });
-          navigator.serviceWorker.register("/sw.js").catch(function (err) {
+          sw.register("/sw.js").then(function (reg) {
+            // Versão nova já baixada de uma visita anterior: aplica agora.
+            if (reg.waiting) offerUpdate(reg);
+            // Procura atualização a cada 30 min enquanto o app fica aberto.
+            setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
+          }).catch(function (err) {
             console.warn("Service worker falhou", err);
           });
         });
