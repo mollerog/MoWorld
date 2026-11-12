@@ -14,11 +14,14 @@
     }
   ],
   "orientation": "any",
-  "display_override": ["fullscreen", "minimal-ui"],
+  "display_override": [
+    "fullscreen",
+    "minimal-ui"
+  ],
   "display": "standalone",
   "dir": "auto",
-  "lang": "en",
-  "name": "OpenFront.io",
+  "lang": "pt-BR",
+  "name": "OpenFront Offline",
   "short_name": "OpenFront",
   "start_url": "/",
   "id": "/"

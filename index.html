@@ -355,6 +355,42 @@
         display: none !important;
       }
     </style>
+    <!-- OFFLINE: service worker (PWA). Baixa o jogo inteiro no primeiro acesso
+         e mostra o progresso numa barrinha; depois disso abre sem internet. -->
+    <script>
+      if ("serviceWorker" in navigator && window.isSecureContext) {
+        window.addEventListener("load", function () {
+          var bar = null;
+          function show(text, done) {
+            if (!bar) {
+              bar = document.createElement("div");
+              bar.style.cssText =
+                "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:2147483647;" +
+                "background:rgba(15,23,42,.92);color:#fff;font:600 13px system-ui,sans-serif;" +
+                "padding:8px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none";
+              document.body.appendChild(bar);
+            }
+            bar.textContent = text;
+            if (done) setTimeout(function () { bar && bar.remove(); bar = null; }, 4000);
+          }
+          var installing = !navigator.serviceWorker.controller;
+          navigator.serviceWorker.addEventListener("message", function (e) {
+            var d = e.data || {};
+            if (d.type !== "offline-cache") return;
+            if (d.ready) {
+              if (installing) show("Pronto! O jogo agora funciona offline.", true);
+              installing = false;
+            } else if (d.total) {
+              var mb = Math.round(d.totalBytes / 1e6);
+              show("Baixando para jogar offline: " + Math.floor((d.done / d.total) * 100) + "% (" + mb + " MB)");
+            }
+          });
+          navigator.serviceWorker.register("/sw.js").catch(function (err) {
+            console.warn("Service worker falhou", err);
+          });
+        });
+      }
+    </script>
     <!-- OFFLINE: anúncios, analytics e Turnstile removidos. Stubs no-op para o código que ainda os referencia. -->
     <script>
       window.ramp = { que: [], passiveMode: true };
