@@ -549,6 +549,10 @@ export class UnitDisplay extends LitElement implements Controller {
     return 0n;
   }
 
+  private canAfford(item: UnitType): boolean {
+    return this.cost(item) <= (this.game?.myPlayer()?.gold() ?? 0n);
+  }
+
   private canBuild(item: UnitType): boolean {
     if (this.game?.config().isUnitDisabled(item)) return false;
     const player = this.game?.myPlayer();
@@ -623,7 +627,7 @@ export class UnitDisplay extends LitElement implements Controller {
     // right edge of the screen, where index.html fixes the host.
     return html`
       <div
-        class="unit-display-root relative p-0.5 border-white/10 w-full lg:border-t max-lg:landscape:border-b side-bar:w-auto side-bar:border side-bar:border-r-0 side-bar:rounded-l-lg side-bar:bg-gray-800/92 side-bar:shadow-lg
+        class="unit-display-root relative p-0.5 border-white/10 w-full lg:border-t mw-unit-root max-lg:landscape:border-b side-bar:w-auto side-bar:border side-bar:border-r-0 side-bar:rounded-l-lg side-bar:bg-gray-800/92 side-bar:shadow-lg
           ${this.moreActionsStart ? "unit-display-more-start" : ""}
           ${this.moreActionsEnd ? "unit-display-more-end" : ""}"
         data-radial-click-through
@@ -765,7 +769,7 @@ export class UnitDisplay extends LitElement implements Controller {
         <div
           class="${
             this.canBuild(unitType) ? "" : "opacity-40"
-          } border border-slate-500 rounded-sm max-lg:landscape:h-7.5 side-bar:h-12 side-bar:min-w-6.5 w-full px-0.5 side-bar:px-0 pb-0.5 flex items-center justify-center gap-0.5 cursor-pointer lg:justify-start
+          } border border-slate-500 rounded-sm max-lg:landscape:h-7.5 side-bar:h-12 side-bar:min-w-6.5 w-full px-0.5 side-bar:px-0 pb-0.5 flex items-center justify-center gap-0.5 cursor-pointer lg:justify-start mw-unit-cell
              ${
             selected
               ? "pointer-fine:hover:bg-gray-400/10"
@@ -828,27 +832,35 @@ export class UnitDisplay extends LitElement implements Controller {
           ${
             hotkey
               ? html`<div
-                  class="unit-display-hotkey ml-0.5 text-[10px] relative -top-1 text-gray-400"
+                  class="unit-display-hotkey ml-0.5 text-[10px] relative -top-1 text-gray-400 mw-unit-hotkey"
                 >
                   ${displayHotkey}
                 </div>`
               : nothing
           }
           <div
-            class="flex flex-col items-center gap-0 pt-0.5 lg:flex-row lg:gap-0.5"
+            class="flex flex-col items-center gap-0 pt-0.5 lg:flex-row lg:gap-0.5 mw-unit-inner"
           >
             <img
               src=${icon}
               alt=${translateText("unit_type." + structureKey)}
-              class="align-middle size-6 lg:size-5 max-lg:landscape:size-5"
+              class="align-middle size-6 lg:size-5 max-lg:landscape:size-5 mw-unit-icon"
             />
             ${
               number !== null
-                ? html`<span class="hidden lg:inline text-xs leading-none"
+                ? html`<span
+                    class="hidden lg:inline text-xs leading-none mw-unit-count"
                     >${renderNumber(number)}</span
                   >`
                 : null
             }
+            <!-- MoWorld: preço embaixo do ícone (vermelho se faltar ouro) -->
+            <span
+              class="hidden text-[11px] font-extrabold tabular-nums leading-none mw-unit-cost ${
+                this.canAfford(unitType) ? "text-slate-300" : "text-red-400"
+              }"
+              >${renderNumber(this.cost(unitType))}</span
+            >
           </div>
         </div>
       </div>

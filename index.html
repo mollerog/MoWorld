@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title data-i18n="main.title">OpenFront (ALPHA)</title>
+    <title data-i18n="main.title">MoWorld</title>
     <link rel="manifest" href="<%- manifestHref %>" />
     <link rel="icon" type="image/svg+xml" href="<%- faviconHref %>" />
     <!-- iOS takes its home-screen icon from here before the manifest. Without it
@@ -148,7 +148,7 @@
 
     <!-- Open Graph -->
     <meta property="og:url" content="https://openfront.io/" />
-    <meta property="og:title" content="OpenFront - Battle Royale" />
+    <meta property="og:title" content="MoWorld" />
     <meta
       property="og:description"
       content="Conquer the world in this multiplayer battle royale! Expand your nation, eliminate opponents, and dominate the map in this fast-paced IO game."
@@ -161,8 +161,8 @@
       {
         "@context": "https://schema.org",
         "@type": "VideoGame",
-        "name": "OpenFront",
-        "alternateName": "OpenFront.io",
+        "name": "MoWorld",
+        "alternateName": "MoWorld",
         "url": "https://openfront.io/",
         "image": "<%- gameplayScreenshotUrl %>",
         "description": "Conquer the world in this multiplayer battle royale! Expand your nation, eliminate opponents, and dominate the map in this fast-paced IO game.",
@@ -346,6 +346,55 @@
       })();
     </script>
     <style>
+      /* MoWorld: no PC (>=1280px) painel e construções numa barra só. */
+      @media (min-width: 1280px) {
+        .moworld-hud-grid { grid-template-columns: 1fr auto 1fr !important; }
+        .moworld-hud-col { width: auto !important; }
+        .moworld-bar {
+          flex-direction: row !important;
+          align-items: center !important;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem !important;
+          margin-bottom: 0.5rem;
+          border: 1px solid rgb(255 255 255 / 0.1);
+          border-radius: 0.9rem !important;
+          background: rgb(15 23 42 / 0.92) !important;
+          box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+        }
+        .moworld-bar > control-panel,
+        .moworld-bar > unit-display { width: auto !important; }
+        .moworld-bar .mw-unit-root {
+          border-top: 0 !important;
+          border-left: 1px solid rgb(255 255 255 / 0.1);
+          padding-left: 0.5rem !important;
+          width: auto !important;
+        }
+        .moworld-bar .unit-display-grid { gap: 0.3rem !important; }
+        .moworld-bar .mw-unit-cell {
+          position: relative;
+          justify-content: center !important;
+          width: 3.3rem !important;
+          height: 3.5rem !important;
+          border-radius: 0.6rem !important;
+          border-color: rgb(255 255 255 / 0.1) !important;
+          background: rgb(255 255 255 / 0.05);
+        }
+        .moworld-bar .mw-unit-inner {
+          flex-direction: column !important;
+          gap: 0.2rem !important;
+          padding-top: 0.35rem !important;
+        }
+        .moworld-bar .mw-unit-icon { width: 1.5rem !important; height: 1.5rem !important; }
+        .moworld-bar .mw-unit-hotkey {
+          position: absolute !important;
+          top: 2px; left: 4px; margin: 0 !important;
+        }
+        .moworld-bar .mw-unit-count {
+          position: absolute; top: 2px; right: 4px;
+          font-size: 10px !important; color: rgb(148 163 184);
+        }
+        .moworld-bar .mw-unit-cost { display: inline !important; }
+      }
       /* OFFLINE: esconde tudo que depende de conta, loja ou servidor. */
       [data-page="page-item-store"], .relative:has(> [data-page="page-item-store"]),
       [data-page="page-inventory"], [data-page="page-leaderboard"], [data-page="page-clan"],
@@ -598,7 +647,7 @@
     <!-- Bottom HUD: <sm=column, sm..lg=2col (HUD left | events right; flipped on
          landscape phones so the events are on the left), lg+=3col grid centered -->
     <div
-      class="fixed bottom-0 left-0 w-full z-[200] flex flex-col pointer-events-none sm:flex-row sm:max-lg:landscape:flex-row-reverse sm:items-end lg:grid lg:grid-cols-[1fr_500px_1fr] lg:items-end min-[1200px]:px-4"
+      class="fixed bottom-0 left-0 w-full z-[200] flex flex-col pointer-events-none sm:flex-row sm:max-lg:landscape:flex-row-reverse sm:items-end moworld-hud-grid lg:grid lg:grid-cols-[1fr_500px_1fr] lg:items-end min-[1200px]:px-4"
       style="
         padding-bottom: env(safe-area-inset-bottom);
         padding-left: env(safe-area-inset-left);
@@ -607,7 +656,7 @@
     >
       <!-- HUD: <sm contents (children join outer flex), sm+ flex-col 460px, lg+ col-2 -->
       <div
-        class="contents sm:flex sm:flex-col sm:pointer-events-none w-full sm:w-[500px] lg:col-start-2 sm:z-10"
+        class="moworld-hud-col contents sm:flex sm:flex-col sm:pointer-events-none w-full sm:w-[500px] lg:col-start-2 sm:z-10"
       >
         <attacks-display
           class="w-full pointer-events-auto order-1 sm:order-none"
@@ -625,11 +674,11 @@
              the edges it touches: left below lg (right instead on landscape
              phones), right below sm, the bottom until it floats from 1200px. -->
         <div
-          class="flex flex-col pointer-events-auto bg-gray-800/92 backdrop-blur-sm side-bar:backdrop-blur-none sm:rounded-tr-lg sm:max-lg:landscape:rounded-tr-none sm:max-lg:landscape:rounded-tl-lg lg:rounded-t-lg min-[1200px]:rounded-lg shadow-lg order-3 sm:order-none z-10 max-[1200px]:-mb-[env(safe-area-inset-bottom)] max-lg:-ml-[env(safe-area-inset-left)] sm:max-lg:landscape:ml-0 max-sm:-mr-[env(safe-area-inset-right)] sm:max-lg:landscape:-mr-[env(safe-area-inset-right)]"
+          class="moworld-bar flex flex-col pointer-events-auto bg-gray-800/92 min-[1280px]:bg-slate-900/90 backdrop-blur-sm side-bar:backdrop-blur-none sm:rounded-tr-lg sm:max-lg:landscape:rounded-tr-none sm:max-lg:landscape:rounded-tl-lg lg:rounded-t-lg min-[1200px]:rounded-lg shadow-lg order-3 sm:order-none z-10 max-[1200px]:-mb-[env(safe-area-inset-bottom)] max-lg:-ml-[env(safe-area-inset-left)] sm:max-lg:landscape:ml-0 max-sm:-mr-[env(safe-area-inset-right)] sm:max-lg:landscape:-mr-[env(safe-area-inset-right)]"
         >
-          <control-panel class="w-full"></control-panel>
+          <control-panel class="w-full min-[1280px]:w-auto"></control-panel>
           <unit-display
-            class="block w-full max-lg:landscape:order-first side-bar:w-auto side-bar:fixed side-bar:top-1/2 side-bar:-translate-y-1/2 side-bar:right-[env(safe-area-inset-right)]"
+            class="block w-full min-[1280px]:w-auto max-lg:landscape:order-first side-bar:w-auto side-bar:fixed side-bar:top-1/2 side-bar:-translate-y-1/2 side-bar:right-[env(safe-area-inset-right)]"
           ></unit-display>
         </div>
       </div>

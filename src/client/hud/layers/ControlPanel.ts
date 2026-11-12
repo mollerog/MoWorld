@@ -407,6 +407,44 @@ export class ControlPanel extends LitElement implements Controller {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  // MoWorld: atalhos de porcentagem de tropas (no lugar do slider).
+  private static readonly RATIO_PRESETS = [10, 25, 35, 50, 75, 100];
+
+  private setAttackRatioPercent(percent: number) {
+    this.attackRatio = percent / 100;
+    this.onAttackRatioChange(this.attackRatio);
+  }
+
+  private renderRatioChips(compact = false) {
+    const current = Math.round(this.attackRatio * 100);
+    return html`<div
+      class="flex flex-1 min-w-0 items-stretch gap-1 rounded-lg bg-black/30 p-0.5"
+      data-radial-click-through
+    >
+      ${ControlPanel.RATIO_PRESETS.map((p) => {
+        const active = p === current;
+        return html`<button
+          type="button"
+          data-radial-click-through
+          aria-pressed=${active ? "true" : "false"}
+          class="flex-1 min-w-0 rounded-md font-extrabold tabular-nums transition-colors ${
+            compact ? "text-[11px] py-1 px-0" : "text-sm py-1"
+          } ${
+            active
+              ? "bg-amber-400 text-gray-900 shadow-[0_2px_0_#b45309]"
+              : "text-gray-300 hover:bg-white/10 hover:text-white"
+          }"
+          @click=${(e: Event) => {
+            e.stopPropagation();
+            this.setAttackRatioPercent(p);
+          }}
+        >
+          ${p}%
+        </button>`;
+      })}
+    </div>`;
+  }
+
   private calculateTroopBar(): { greenPercent: number; orangePercent: number } {
     const base = Math.max(this._maxTroops, 1);
     const greenPercentRaw = (this._troops / base) * 100;
@@ -572,104 +610,137 @@ export class ControlPanel extends LitElement implements Controller {
     `;
   }
 
+  // MoWorld: painel do PC numa linha só, em seções (jogador | tropas |
+  // ataque | ouro). A barra de construções fica à direita a partir de
+  // 1280px (index.html põe as duas lado a lado).
   private renderDesktop() {
+    const me = this.game?.myPlayer();
+    const land = this.game
+      ? Math.max(this.game.numLandTiles() - this.game.numTilesWithFallout(), 1)
+      : 1;
+    const share = me ? (me.numTilesOwned() / land) * 100 : 0;
+    const sending = (me?.troops() ?? 0) * this.attackRatio;
+    const { greenPercent, orangePercent } = this.calculateTroopBar();
+    const label =
+      "text-[10px] font-extrabold uppercase tracking-wider text-slate-400";
+    const divider = html`<div class="w-px self-stretch bg-white/10"></div>`;
     return html`
       ${this.renderNotification()}
-      <!-- Row 1: troop rate | troop bar | gold -->
-      <div class="flex gap-1.5 items-center mb-1">
-        <!-- Troop rate -->
+      <div class="flex items-stretch gap-3 px-1 py-0.5" translate="no">
+        <!-- Jogador -->
+        ${
+          me
+            ? html`<div
+                  class="hidden min-[1440px]:flex flex-col justify-center min-w-0 max-w-[9rem]"
+                >
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span
+                      class="size-2.5 rounded-sm shrink-0"
+                      style="background:${me.territoryColor().toHex()}"
+                    ></span>
+                    <span class="truncate font-extrabold text-white text-sm"
+                      >${me.displayName()}</span
+                    >
+                  </div>
+                  <span class="text-[11px] text-slate-400 tabular-nums"
+                    >${share < 0.01 ? "<0.01" : share.toFixed(2)}% do mundo</span
+                  >
+                </div>
+                <div
+                  class="hidden min-[1440px]:block w-px self-stretch bg-white/10"
+                ></div>`
+            : nothing
+        }
+        <!-- Tropas -->
         <div
-          class="flex items-center gap-1 shrink-0 border rounded-md font-bold text-sm py-0.5 px-1 w-[5.5rem] ${this.tutorialHighlightClass(
-            "troop_rate",
-          )} ${
-            this._troopRateIsIncreasing
-              ? "border-green-400"
-              : "border-orange-400"
-          }"
-          translate="no"
+          class="flex flex-col justify-center min-w-[7.5rem] ${this.tutorialHighlightClass(
+            "troops",
+          )}"
         >
-          <img
-            src=${soldierIcon}
-            alt=""
-            aria-hidden="true"
-            width="13"
-            height="13"
-            class="shrink-0"
-            style="filter: ${
-              this._troopRateIsIncreasing
-                ? "brightness(0) saturate(100%) invert(74%) sepia(44%) saturate(500%) hue-rotate(83deg) brightness(103%)"
-                : "brightness(0) saturate(100%) invert(65%) sepia(60%) saturate(600%) hue-rotate(330deg) brightness(105%)"
-            }"
-          />
-          <span
-            class="text-sm font-bold tabular-nums ${
-              this._troopRateIsIncreasing ? "text-green-400" : "text-orange-400"
-            }"
-            >+${renderTroops(this.troopRate)}/s</span
+          <div class="flex items-center justify-between gap-2">
+            <span class=${label}>Tropas</span>
+            <span
+              class="text-[11px] font-extrabold tabular-nums ${this.tutorialHighlightClass(
+                "troop_rate",
+              )} ${
+                this._troopRateIsIncreasing
+                  ? "text-green-400"
+                  : "text-orange-400"
+              }"
+              >+${renderTroops(this.troopRate)}/s</span
+            >
+          </div>
+          <div class="flex items-baseline gap-1 leading-tight">
+            <span class="text-xl font-extrabold text-white tabular-nums"
+              >${renderTroops(this._troops)}</span
+            >
+            <span class="text-xs text-slate-400 tabular-nums"
+              >/ ${renderTroops(this._maxTroops)}</span
+            >
+          </div>
+          <div class="flex h-1 mt-0.5 rounded-full bg-black/40 overflow-hidden">
+            <div
+              class="bg-green-500 transition-[width] duration-200"
+              style="width:${greenPercent}%"
+            ></div>
+            <div
+              class="bg-orange-400 transition-[width] duration-200"
+              style="width:${orangePercent}%"
+            ></div>
+          </div>
+        </div>
+        ${divider}
+        <!-- Ataque -->
+        <div
+          class="flex flex-col justify-center gap-0.5 min-w-[13rem] ${this.tutorialHighlightClass(
+            "attack_ratio",
+          )}"
+        >
+          <div class="flex items-center justify-between">
+            <span class="flex items-center gap-1 ${label}">
+              <img
+                src=${swordIcon}
+                alt=""
+                aria-hidden="true"
+                width="10"
+                height="10"
+                style="filter: brightness(0) invert(0.7);"
+              />Ataque
+            </span>
+            <span class="text-xs font-extrabold text-amber-400 tabular-nums"
+              >${(this.attackRatio * 100).toFixed(0)}%</span
+            >
+          </div>
+          ${this.renderRatioChips(true)}
+          <span class="text-[11px] text-slate-400 tabular-nums"
+            >Envia ${renderTroops(sending)} tropas</span
           >
         </div>
-        <!-- Troop bar -->
-        <div class="flex-1 ${this.tutorialHighlightClass("troops")}">
-          ${this.renderDesktopTroopBar()}
-        </div>
-        <!-- Gold -->
+        ${divider}
+        <!-- Ouro -->
         <div
-          class="flex items-center gap-1 shrink-0 border rounded-md border-yellow-400 font-bold text-yellow-400 text-sm py-0.5 px-1 min-w-[4.5rem] relative ${this.tutorialHighlightClass(
+          class="flex flex-col justify-center min-w-[5.5rem] relative ${this.tutorialHighlightClass(
             "gold",
           )}"
-          translate="no"
         >
           ${
             this._goldGain !== null
               ? keyed(
                   this._goldGainPulseId,
                   html`<span
-                    class="gold-gain-pop absolute -top-5 right-[5px] min-[1015px]:right-[9px] text-green-400 text-sm font-extrabold tabular-nums whitespace-nowrap pointer-events-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
+                    class="gold-gain-pop absolute -top-4 right-0 text-green-400 text-xs font-extrabold tabular-nums whitespace-nowrap pointer-events-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]"
                     >+${renderNumber(this._goldGain)}</span
                   >`,
                 )
               : ""
           }
-          <img src=${goldCoinIcon} width="13" height="13" class="shrink-0" />
-          <span class="tabular-nums">${renderNumber(this._gold)}</span>
-        </div>
-      </div>
-      <!-- Row 2: attack ratio | slider -->
-      <div
-        class="flex items-center gap-1.5 ${this.tutorialHighlightClass(
-          "attack_ratio",
-        )}"
-        translate="no"
-      >
-        <div
-          class="flex items-center gap-1 shrink-0 border border-gray-600 rounded-md px-1 py-0.5 text-sm font-bold text-white cursor-pointer w-[8rem]"
-        >
-          <img
-            src=${swordIcon}
-            alt=""
-            aria-hidden="true"
-            width="12"
-            height="12"
-            style="filter: brightness(0) invert(1);"
-          />
-          <span
-            >${(this.attackRatio * 100).toFixed(0)}%
-            (${renderTroops(
-              (this.game?.myPlayer()?.troops() ?? 0) * this.attackRatio,
-            )})</span
+          <span class="flex items-center gap-1 ${label}">
+            <img src=${goldCoinIcon} width="10" height="10" />Ouro
+          </span>
+          <span class="text-xl font-extrabold text-yellow-400 tabular-nums leading-tight"
+            >${renderNumber(this._gold)}</span
           >
         </div>
-        <input
-          type="range"
-          min="1"
-          max="100"
-          .value=${String(Math.round(this.attackRatio * 100))}
-          @input=${(e: Event) => this.handleRatioSliderInput(e)}
-          @pointerup=${(e: Event) => this.handleRatioSliderPointerUp(e)}
-          @click=${(e: MouseEvent) => this.handleRatioSliderClick(e)}
-          data-radial-click-through
-          class="flex-1 h-1.5 accent-aquarius cursor-pointer"
-        />
       </div>
     `;
   }
@@ -716,15 +787,16 @@ export class ControlPanel extends LitElement implements Controller {
         </div>
         <!-- Troop bar -->
         <div
-          class="w-[40%] shrink-0 side-bar:flex-1 side-bar:min-w-0 flex items-center ${this.tutorialHighlightClass(
+          class="w-[34%] shrink-0 side-bar:flex-1 side-bar:min-w-0 flex items-center ${this.tutorialHighlightClass(
             "troops",
           )}"
         >
           ${this.renderMobileTroopBar()}
         </div>
         <!-- Sword + % and troop count label -->
+        <!-- MoWorld: escondido; os botões de % já mostram a escolha. -->
         <div
-          class="flex flex-col items-center justify-center shrink-0 side-bar:hidden"
+          class="hidden flex-col items-center justify-center shrink-0"
         >
           <div class="flex items-center gap-0.5">
             <img
@@ -795,37 +867,17 @@ export class ControlPanel extends LitElement implements Controller {
                     )})</span
                   ></span
                 >
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  .value=${String(Math.round(this.attackRatio * 100))}
-                  @input=${(e: Event) => this.handleRatioSliderInput(e)}
-                  @pointerup=${(e: Event) => this.handleRatioSliderPointerUp(e)}
-                  @click=${(e: MouseEvent) => this.handleRatioSliderClick(e)}
-                  data-radial-click-through
-                  class="flex-1 min-w-0 h-1.5 accent-aquarius cursor-pointer"
-                />
+                ${this.renderRatioChips(true)}
               </div>`
             : nothing
         }
         <div
-          class="flex-1 min-w-0 side-bar:hidden ${this.tutorialHighlightClass(
+          class="flex flex-1 min-w-0 side-bar:hidden ${this.tutorialHighlightClass(
             "attack_ratio",
           )}"
           translate="no"
         >
-          <input
-            type="range"
-            min="1"
-            max="100"
-            .value=${String(Math.round(this.attackRatio * 100))}
-            @input=${(e: Event) => this.handleRatioSliderInput(e)}
-            @pointerup=${(e: Event) => this.handleRatioSliderPointerUp(e)}
-            @click=${(e: MouseEvent) => this.handleRatioSliderClick(e)}
-            data-radial-click-through
-            class="w-full h-1.5 accent-aquarius cursor-pointer"
-          />
+          ${this.renderRatioChips(true)}
         </div>
       </div>
     `;
