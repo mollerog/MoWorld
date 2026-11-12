@@ -484,7 +484,7 @@
     "#fff5d2",
     "#fff0dc"
   ],
-  "borderDarken": 0.125,
+  "borderDarken": 0.22,
   "borderLightnessScale": 1,
   "defendedBorderDarkenLight": 0.2,
   "defendedBorderDarkenDark": 0.4,

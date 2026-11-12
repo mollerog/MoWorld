@@ -18,11 +18,11 @@
   },
   "terrain": {
     "backgroundColor": "#3c3c3c",
-    "oceanColor": "#4785b5",
-    "sandColor": "#CCCB9E",
-    "plainsColor": "#BEDC8A",
-    "highlandColor": "#DCCB9E",
-    "mountainColor": "#e6e6e6"
+    "oceanColor": "#3a7cc0",
+    "sandColor": "#ecd9a8",
+    "plainsColor": "#a9d47c",
+    "highlandColor": "#dcc495",
+    "mountainColor": "#f6f6f6"
   },
   "falloutBloom": {
     "broilSpeedCold": 0.0018,
@@ -78,8 +78,8 @@
     "spiralResolutionScale": 0.25,
     "defenseCheckerDarken": 0.7,
     "territoryDefenseDarken": 0.85,
-    "territorySaturation": 0.85,
-    "territoryAlpha": 0.588,
+    "territorySaturation": 1,
+    "territoryAlpha": 0.68,
     "coordinateGridOpacity": 0.5,
     "staleNukeBase": 0,
     "staleNukeVariation": 0.05,
@@ -349,7 +349,11 @@
     "gradientSolidEnd": 0.1
   },
   "smallPlayerGlow": {
-    "color": [1.0, 0.12, 0.1],
+    "color": [
+      1.0,
+      0.12,
+      0.1
+    ],
     "alpha": 0.9,
     "pulseSpeed": 0.003,
     "strength": 0.35

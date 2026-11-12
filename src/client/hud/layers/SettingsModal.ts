@@ -215,8 +215,8 @@ export class SettingsModal extends LitElement implements Controller {
       game !== null &&
       game.config().gameConfig().gameType === GameType.Singleplayer &&
       game.config().gameConfig().tutorial !== true &&
-      !game.config().isReplay() &&
-      responseHasLinkedIdentity(lastUserMeResponse()?.response ?? false)
+      !game.config().isReplay()
+      // MoWorld: saves ficam no aparelho, não precisa de conta.
     );
   }
 

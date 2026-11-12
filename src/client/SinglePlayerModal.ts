@@ -547,8 +547,8 @@ export class SinglePlayerModal extends BaseModal {
         >
           <saved-games-panel
             class="block mb-6"
-            .signedIn=${responseHasLinkedIdentity(this.userMeResponse)}
-            .sharedId=${this.sharedSaveId}
+            .signedIn=${true}
+            .sharedId=${null}
             .busy=${this.starting}
             @load-saved-game=${this.handleLoadSavedGame}
             @open-shared-save=${(e: CustomEvent<string>) =>

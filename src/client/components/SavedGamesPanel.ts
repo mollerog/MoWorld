@@ -451,22 +451,7 @@ export class SavedGamesPanel extends LitElement {
                 { disabled: pending, attr: "rename" },
               )
         }
-        ${this.button(
-          translateText(
-            save.public ? "saved_games.unshare" : "saved_games.share",
-          ),
-          () => void this.toggleShared(save),
-          { disabled: pending, attr: "toggle-share" },
-        )}
-        ${
-          save.public
-            ? this.button(
-                translateText("saved_games.copy_link"),
-                () => void this.copyLink(save.id),
-                { attr: "copy-link" },
-              )
-            : null
-        }
+        <!-- MoWorld: sem compartilhar (precisa de servidor). -->
         ${this.button(
           translateText("saved_games.delete"),
           () => void this.deleteSave(save),
@@ -536,7 +521,7 @@ export class SavedGamesPanel extends LitElement {
       ${
         expanded
           ? html`<div class="mt-4 flex flex-col gap-4">
-              ${this.renderCodeForm()}${this.renderShared()}${this.renderOwn()}
+              ${this.renderOwn()}
             </div>`
           : null
       }

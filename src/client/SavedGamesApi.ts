@@ -1,10 +1,7 @@
 import {
   type SavedGame,
   SavedGameSchema,
-  SavedGamesListResponseSchema,
 } from "@openfront/shared/ApiSchemas";
-import { getApiBase } from "./Api";
-import { getAuthHeader } from "./Auth";
 
 // Saved singleplayer games. The API stores the gzipped bytes of a game
 // snapshot (WorkerClient.snapshot()) as they are; it never decodes them.
@@ -24,93 +21,124 @@ export type SavedGameError =
   | "not_found"
   | "request_failed";
 
-async function authedFetch(path: string, init?: RequestInit) {
-  return fetch(`${getApiBase()}${path}`, {
-    ...init,
-    headers: {
-      ...init?.headers,
-      Authorization: await getAuthHeader(),
-    },
+// MoWorld: os saves ficam no próprio aparelho (IndexedDB), sem conta e sem
+// servidor. As funções mantêm a mesma assinatura da versão online, então o
+// resto do jogo (menu de salvar, painel de saves) funciona igual.
+// Compartilhar saves exige servidor e fica desligado.
+
+const DB_NAME = "moworld-saves";
+const STORE_META = "meta";
+const STORE_DATA = "data";
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_META))
+        db.createObjectStore(STORE_META, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(STORE_DATA))
+        db.createObjectStore(STORE_DATA);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
-function errorFor(res: Response): SavedGameError {
-  if (res.status === 401 || res.status === 403) return "unauthorized";
-  if (res.status === 409) return "limit";
-  if (res.status === 400) return "rejected";
-  if (res.status === 404) return "not_found";
-  return "request_failed";
+async function tx<T>(
+  stores: string[],
+  mode: IDBTransactionMode,
+  run: (t: IDBTransaction) => IDBRequest<T> | void,
+): Promise<T | undefined> {
+  const db = await openDb();
+  try {
+    return await new Promise<T | undefined>((resolve, reject) => {
+      const t = db.transaction(stores, mode);
+      const req = run(t);
+      let result: T | undefined;
+      if (req) req.onsuccess = () => (result = req.result);
+      t.oncomplete = () => resolve(result);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error);
+    });
+  } finally {
+    db.close();
+  }
 }
 
-async function parseSavedGame(
-  res: Response,
-): Promise<SavedGame | SavedGameError> {
-  if (!res.ok) return errorFor(res);
-  const parsed = SavedGameSchema.safeParse(await res.json());
-  if (!parsed.success) {
-    console.warn("saved game: zod failed", parsed.error);
-    return "request_failed";
-  }
-  return parsed.data;
+function newId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(9));
+  return Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("");
+}
+
+async function getMeta(id: string): Promise<SavedGame | undefined> {
+  return tx<SavedGame>([STORE_META], "readonly", (t) =>
+    t.objectStore(STORE_META).get(id),
+  );
 }
 
 export async function listSavedGames(): Promise<SavedGame[] | false> {
   try {
-    const res = await authedFetch("/users/@me/saved_games");
-    if (!res.ok) return false;
-    const parsed = SavedGamesListResponseSchema.safeParse(await res.json());
-    if (!parsed.success) {
-      console.warn("listSavedGames: zod failed", parsed.error);
-      return false;
-    }
-    return parsed.data.savedGames;
+    const all =
+      (await tx<SavedGame[]>([STORE_META], "readonly", (t) =>
+        t.objectStore(STORE_META).getAll(),
+      )) ?? [];
+    return all
+      .filter((s) => SavedGameSchema.safeParse(s).success)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch (err) {
-    console.warn("listSavedGames: request failed", err);
+    console.warn("listSavedGames: IndexedDB failed", err);
     return false;
   }
 }
 
-/** Uploads an (uncompressed) snapshot as a new, private save. */
+/** Salva um snapshot (descomprimido) como um save novo no aparelho. */
 export async function uploadSavedGame(
   snapshot: Uint8Array,
   meta: { name: string; map: string; tick: number },
 ): Promise<SavedGame | SavedGameError> {
   try {
-    const params = new URLSearchParams({
-      name: meta.name,
+    const data = await gzip(snapshot);
+    const save: SavedGame = {
+      id: newId(),
+      name: meta.name.slice(0, 64),
       map: meta.map,
-      tick: String(meta.tick),
+      tick: meta.tick,
+      sizeBytes: data.byteLength,
+      public: false,
+      createdAt: new Date().toISOString(),
+    };
+    await tx([STORE_META, STORE_DATA], "readwrite", (t) => {
+      t.objectStore(STORE_META).put(save);
+      t.objectStore(STORE_DATA).put(data, save.id);
     });
-    const res = await authedFetch(`/users/@me/saved_games?${params}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/gzip" },
-      // A Uint8Array body, so fetch sends the Content-Length the API needs.
-      body: await gzip(snapshot),
-    });
-    return await parseSavedGame(res);
+    return save;
   } catch (err) {
-    console.warn("uploadSavedGame: request failed", err);
+    console.warn("uploadSavedGame: IndexedDB failed", err);
     return "request_failed";
   }
 }
 
-/** Renames a save, or shares or unshares it. */
+/** Renomeia um save. (Compartilhar não existe offline.) */
 export async function updateSavedGame(
   id: string,
   update: { name?: string; public?: boolean },
 ): Promise<SavedGame | SavedGameError> {
   try {
-    const res = await authedFetch(
-      `/users/@me/saved_games/${encodeURIComponent(id)}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(update),
-      },
-    );
-    return await parseSavedGame(res);
+    const save = await getMeta(id);
+    if (!save) return "not_found";
+    if (update.public) return "rejected";
+    const next: SavedGame = {
+      ...save,
+      name: update.name !== undefined ? update.name.slice(0, 64) : save.name,
+      public: false,
+    };
+    await tx([STORE_META], "readwrite", (t) => {
+      t.objectStore(STORE_META).put(next);
+    });
+    return next;
   } catch (err) {
-    console.warn("updateSavedGame: request failed", err);
+    console.warn("updateSavedGame: IndexedDB failed", err);
     return "request_failed";
   }
 }
@@ -119,49 +147,36 @@ export async function deleteSavedGame(
   id: string,
 ): Promise<true | SavedGameError> {
   try {
-    const res = await authedFetch(
-      `/users/@me/saved_games/${encodeURIComponent(id)}`,
-      { method: "DELETE" },
-    );
-    return res.ok ? true : errorFor(res);
+    await tx([STORE_META, STORE_DATA], "readwrite", (t) => {
+      t.objectStore(STORE_META).delete(id);
+      t.objectStore(STORE_DATA).delete(id);
+    });
+    return true;
   } catch (err) {
-    console.warn("deleteSavedGame: request failed", err);
+    console.warn("deleteSavedGame: IndexedDB failed", err);
     return "request_failed";
   }
 }
 
-/** A shared save's details. Needs no session. */
+/** Saves compartilhados dependem de servidor: não existem offline. */
 export async function fetchSharedSavedGame(
-  id: string,
+  _id: string,
 ): Promise<SavedGame | SavedGameError> {
-  try {
-    const res = await fetch(
-      `${getApiBase()}/public/saved_games/${encodeURIComponent(id)}`,
-    );
-    return await parseSavedGame(res);
-  } catch (err) {
-    console.warn("fetchSharedSavedGame: request failed", err);
-    return "request_failed";
-  }
+  return "not_found";
 }
 
-/**
- * A save's snapshot, uncompressed and ready to restore: one of the player's
- * own, or (`shared`) anyone's shared one.
- */
+/** O snapshot de um save, descomprimido e pronto para restaurar. */
 export async function downloadSavedGame(
   id: string,
   shared: boolean,
 ): Promise<Uint8Array | SavedGameError> {
+  if (shared) return "not_found";
   try {
-    const path = shared
-      ? `/public/saved_games/${encodeURIComponent(id)}/data`
-      : `/users/@me/saved_games/${encodeURIComponent(id)}/data`;
-    const res = shared
-      ? await fetch(`${getApiBase()}${path}`)
-      : await authedFetch(path);
-    if (!res.ok) return errorFor(res);
-    return await gunzip(new Uint8Array(await res.arrayBuffer()));
+    const data = await tx<Uint8Array>([STORE_DATA], "readonly", (t) =>
+      t.objectStore(STORE_DATA).get(id),
+    );
+    if (!data) return "not_found";
+    return await gunzip(new Uint8Array(data));
   } catch (err) {
     console.warn("downloadSavedGame: failed", err);
     return "request_failed";
