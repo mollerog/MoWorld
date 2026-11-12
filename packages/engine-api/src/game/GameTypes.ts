@@ -124,7 +124,10 @@ export {
  * The maps players can pick or be dealt: everything but `hidden` ones (the
  * tutorial map), which only code that names them starts.
  */
-export const listedMaps: readonly MapInfo[] = maps.filter((m) => !m.hidden);
+// OFFLINE: só os mapas "featured" vão no APK (os outros são apagados do build).
+export const listedMaps: readonly MapInfo[] = maps.filter(
+  (m) => !m.hidden && m.categories.includes("featured"),
+);
 
 export enum GameType {
   Singleplayer = "Singleplayer",
