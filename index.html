@@ -350,7 +350,8 @@
       @media (min-width: 1280px) {
         .moworld-hud-grid { grid-template-columns: 1fr auto 1fr !important; }
         .moworld-hud-col { width: auto !important; }
-        .moworld-bar {
+        /* Só estiliza durante a partida (fora dela o painel fica vazio/oculto). */
+        .moworld-bar:not(:has(> control-panel > div.hidden)) {
           flex-direction: row !important;
           align-items: center !important;
           gap: 0.5rem;
@@ -395,6 +396,12 @@
         }
         .moworld-bar .mw-unit-cost { display: inline !important; }
       }
+      /* MoWorld: sem o logo/versão do OpenFront e sem o item "Jogar" (única página). */
+      img[src*="OpenFrontLogo"], #game-version,
+      desktop-nav-bar nav > div:has(#game-version),
+      .nav-menu-item[data-page="page-play"] {
+        display: none !important;
+      }
       /* OFFLINE: esconde tudo que depende de conta, loja ou servidor. */
       [data-page="page-item-store"], .relative:has(> [data-page="page-item-store"]),
       [data-page="page-inventory"], [data-page="page-leaderboard"], [data-page="page-clan"],
@@ -414,9 +421,10 @@
             if (!bar) {
               bar = document.createElement("div");
               bar.style.cssText =
-                "position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:2147483647;" +
-                "background:rgba(15,23,42,.92);color:#fff;font:600 13px system-ui,sans-serif;" +
-                "padding:8px 14px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none";
+                "position:fixed;left:12px;bottom:12px;z-index:2147483647;" +
+                "background:rgba(15,23,42,.85);color:rgba(255,255,255,.85);" +
+                "font:600 11px system-ui,sans-serif;padding:5px 10px;border-radius:999px;" +
+                "border:1px solid rgba(255,255,255,.12);pointer-events:none";
               document.body.appendChild(bar);
             }
             bar.textContent = text;
@@ -427,11 +435,10 @@
             var d = e.data || {};
             if (d.type !== "offline-cache") return;
             if (d.ready) {
-              if (installing) show("Pronto! O jogo agora funciona offline.", true);
+              if (installing) show("✓ Pronto para jogar offline", true);
               installing = false;
             } else if (d.total) {
-              var mb = Math.round(d.totalBytes / 1e6);
-              show("Baixando para jogar offline: " + Math.floor((d.done / d.total) * 100) + "% (" + mb + " MB)");
+              show("↓ Offline " + Math.floor((d.done / d.total) * 100) + "%");
             }
           });
           navigator.serviceWorker.register("/sw.js").catch(function (err) {
