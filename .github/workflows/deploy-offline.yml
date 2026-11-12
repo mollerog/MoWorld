@@ -1,0 +1,52 @@
+# Compila a versão offline e publica no Firebase Hosting a cada push na main.
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   FIREBASE_SERVICE_ACCOUNT  conteúdo do JSON da conta de serviço do Firebase
+#   FIREBASE_PROJECT_ID       id do projeto (ex.: moworld-12345)
+# Sem os secrets, o build roda mesmo assim e fica disponível para download.
+name: Build e deploy offline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar npm 12
+        run: npm i -g npm@12
+
+      - name: Instalar dependências
+        run: npm run inst
+
+      - name: Build offline
+        run: npm run build-offline
+
+      - name: Guardar o build (baixável na aba Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: moworld-static
+          path: static
+          retention-days: 7
+
+      - name: Publicar no Firebase
+        if: env.HAS_FIREBASE == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
+          channelId: live

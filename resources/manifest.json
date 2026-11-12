@@ -21,8 +21,8 @@
   "display": "standalone",
   "dir": "auto",
   "lang": "pt-BR",
-  "name": "OpenFront Offline",
-  "short_name": "OpenFront",
+  "name": "MoWorld",
+  "short_name": "MoWorld",
   "start_url": "/",
   "id": "/"
 }
