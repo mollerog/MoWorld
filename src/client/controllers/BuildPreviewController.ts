@@ -340,7 +340,15 @@ export class BuildPreviewController implements Controller {
 
   init() {
     this.eventBus.on(MouseMoveEvent, (e) => this.moveGhost(e));
-    this.eventBus.on(MouseUpEvent, (e) => this.requestConfirmStructure(e));
+    this.eventBus.on(MouseUpEvent, (e) => {
+      // MoWorld: no PC, com bomba selecionada cada clique marca/desmarca um
+      // alvo; "Lançar" (ou Enter) dispara todos.
+      if (!this.touchPlacementMode && isNukeType(this.uiState.ghostStructure)) {
+        this.toggleNukeTarget(e.x, e.y);
+        return;
+      }
+      this.requestConfirmStructure(e);
+    });
     this.eventBus.on(NukeBatchCommandEvent, (e) => {
       if (e.launch) this.launchNukeTargets();
       else this.clearNukeTargets();
@@ -361,6 +369,13 @@ export class BuildPreviewController implements Controller {
         this.touchPreviewTile === null || this.isNearTouchPreview(e.x, e.y);
     });
     this.eventBus.on(ConfirmGhostStructureEvent, (e) => {
+      if (
+        isNukeType(this.uiState.ghostStructure) &&
+        this.nukeTargets.length > 0
+      ) {
+        this.launchNukeTargets();
+        return;
+      }
       this.syncGhostState();
       if (this.touchPlacementMode) {
         const target = this.touchPreviewScreenPosition();

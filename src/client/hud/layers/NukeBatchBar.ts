@@ -1,4 +1,4 @@
-// MoWorld: lote de bombas no celular.
+// MoWorld: lote de bombas (celular e PC).
 //
 // Com uma bomba selecionada, cada toque no mapa marca um alvo (tocar de novo
 // num alvo desmarca). Esta barra mostra quantos alvos há e lança todos de uma
@@ -39,6 +39,7 @@ export class NukeBatchBar extends LitElement implements Controller {
   @state() private type: UnitType | null = null;
   @state() private mode: UnitType | null = null;
   @state() private bottomPx = 120;
+  @state() private coarse = true;
   private raf = 0;
 
   createRenderRoot() {
@@ -64,8 +65,8 @@ export class NukeBatchBar extends LitElement implements Controller {
 
   private frame() {
     const g = this.uiState?.ghostStructure ?? null;
-    const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-    const mode = coarse && g !== null && NUKES.has(g) ? g : null;
+    const mode = g !== null && NUKES.has(g) ? g : null;
+    this.coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
     if (mode !== this.mode) {
       this.mode = mode;
       // Saiu do modo bomba (ou trocou de bomba): descarta os alvos marcados.
@@ -120,7 +121,9 @@ export class NukeBatchBar extends LitElement implements Controller {
           <div class="text-[11px] text-slate-400">
             ${
               n === 0
-                ? "Toque nos alvos · tocar de novo desmarca"
+                ? this.coarse
+                  ? "Toque nos alvos · tocar de novo desmarca"
+                  : "Clique nos alvos · clicar de novo desmarca · Enter lança"
                 : `${n} alvo${n > 1 ? "s" : ""} · lança só o que o ouro e os silos permitirem`
             }
           </div>
