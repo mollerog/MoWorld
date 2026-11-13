@@ -32,6 +32,8 @@ import {
   steamGrantEndedShown,
 } from "./SteamGrantNotices";
 import { steamSDK } from "./SteamSDK";
+import { RENDERABLE_NAME_CHAR_RE } from "@openfront/engine-api/Schemas";
+import { currentUser, onAccountChange } from "./Account";
 import { UserSettings } from "./UserSettings";
 import {
   MAX_CLAN_TAG_LENGTH,
@@ -629,8 +631,61 @@ export class UsernameInput extends LitElement {
     });
   }
 
+  // MoWorld: foto da conta Google ao lado do nome quando logado.
+  @state() private accountPhoto: string | null = null;
+  @state() private accountSignedIn = false;
+  private offAccount: (() => void) | null = null;
+
+  // Nome da conta Google → nome de jogador válido (primeiro nome, só
+  // caracteres que o jogo desenha, até 20).
+  private static nameFromAccount(raw: string | null | undefined): string {
+    const clean = Array.from((raw ?? "").trim())
+      .filter((c) => RENDERABLE_NAME_CHAR_RE.test(c))
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!clean) return "";
+    const first = clean.split(" ")[0];
+    const pick = first.length >= MIN_USERNAME_LENGTH ? first : clean;
+    return clampUsername(pick).trim();
+  }
+
+  private applyAccount() {
+    const user = currentUser();
+    this.accountSignedIn = !!user;
+    this.accountPhoto = user?.photoURL ?? null;
+    if (!user) return;
+    // Só troca o nome na primeira vez que essa conta entra neste aparelho;
+    // depois o jogador pode editar à vontade.
+    const key = "moworld-name-from-account";
+    let applied: string[] = [];
+    try {
+      applied = JSON.parse(localStorage.getItem(key) ?? "[]");
+    } catch {
+      applied = [];
+    }
+    if (applied.includes(user.uid)) return;
+    const name = UsernameInput.nameFromAccount(
+      user.name ?? user.email?.split("@")[0],
+    );
+    if (name && validateUsername(name).isValid) {
+      this.baseUsername = name;
+      this.usernameIsGenerated = false;
+      this.validateAndStore();
+    }
+    applied.push(user.uid);
+    try {
+      localStorage.setItem(key, JSON.stringify(applied.slice(-10)));
+    } catch {
+      /* sem armazenamento: aplica de novo na próxima vez, sem problema */
+    }
+    this.requestUpdate();
+  }
+
   connectedCallback() {
     super.connectedCallback();
+    this.offAccount ??= onAccountChange(() => this.applyAccount());
+    queueMicrotask(() => this.applyAccount());
     document.addEventListener("pointerdown", this.handleDocumentPointerDown, {
       capture: true,
     });
@@ -737,6 +792,8 @@ export class UsernameInput extends LitElement {
   }
 
   disconnectedCallback() {
+    this.offAccount?.();
+    this.offAccount = null;
     document.removeEventListener(
       "pointerdown",
       this.handleDocumentPointerDown,
@@ -1136,8 +1193,26 @@ export class UsernameInput extends LitElement {
     `;
   }
 
+  private renderAccountAvatar() {
+    if (!this.accountSignedIn) return null;
+    return this.accountPhoto
+      ? html`<img
+          src=${this.accountPhoto}
+          referrerpolicy="no-referrer"
+          alt=""
+          title="Conectado com Google"
+          class="shrink-0 ml-1.5 size-8 rounded-full ring-2 ring-emerald-400/80 object-cover"
+        />`
+      : html`<span
+          title="Conectado com Google"
+          class="shrink-0 ml-1.5 size-8 rounded-full ring-2 ring-emerald-400/80 bg-slate-700 flex items-center justify-center text-sm"
+          >☁</span
+        >`;
+  }
+
   private renderNameInput() {
     return html`
+      ${this.renderAccountAvatar()}
       <input
         type="text"
         .value=${this.baseUsername}

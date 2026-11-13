@@ -125,6 +125,9 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Páginas reservadas do Firebase (/__/auth/handler, /__/auth/iframe,
+  // /__/firebase/init.json) precisam vir da rede, senão o login não conclui.
+  if (url.pathname.startsWith("/__/")) return;
   const path = req.mode === "navigate" ? "/" : url.pathname;
   if (!FILES[path]) return; // fora do build: deixa o navegador resolver
 
