@@ -48,6 +48,7 @@ import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
 import { ControlBar } from "./layers/ControlBar";
 import { TargetPopup } from "./layers/TargetPopup";
+import { TotalVictory } from "./layers/TotalVictory";
 import { TutorialPanel } from "./layers/TutorialPanel";
 import { UnitDisplay } from "./layers/UnitDisplay";
 import { WinModal } from "./layers/WinModal";
@@ -313,6 +314,16 @@ export function createRenderer(
   }
   inGamePromo.game = game;
 
+  // MoWorld: vitória total (todos os inimigos eliminados).
+  const totalVictory = document.querySelector(
+    "moworld-total-victory",
+  ) as TotalVictory;
+  if (!(totalVictory instanceof TotalVictory)) {
+    console.error("total victory not found");
+  }
+  totalVictory.game = game;
+  totalVictory.eventBus = eventBus;
+
   // MoWorld: contador de controle no topo.
   const controlBar = document.querySelector(
     "moworld-control-bar",
@@ -406,6 +417,7 @@ export function createRenderer(
     tutorialPanel,
     targetPopup,
     controlBar,
+    totalVictory,
     onboardingOverlay,
     alertFrame,
     performanceOverlay,

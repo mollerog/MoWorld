@@ -259,7 +259,7 @@ export class TargetPopup extends LitElement implements Controller {
           ${owner ? this.typeLabel(owner) : "Sem dono · expandir não tem resistência"}${
             owner
               ? html` · ${renderTroops(owner.troops())} tropas ·
-                  ${share < 0.01 ? "<0.01" : share.toFixed(2)}% território`
+                ${share < 0.01 ? "<0.01" : share.toFixed(2)}% território`
               : nothing
           }
         </div>

@@ -110,7 +110,9 @@ export class ControlBar extends LitElement implements Controller {
         class="moworld-control-bar pointer-events-none rounded-2xl border border-white/10 bg-slate-950/90 px-3 py-1.5 text-white shadow-[0_10px_30px_rgb(0_0_0/0.4)] backdrop-blur-sm"
         translate="no"
       >
-        <div class="flex items-center gap-2 text-[10px] font-extrabold tracking-wider">
+        <div
+          class="flex items-center gap-2 text-[10px] font-extrabold tracking-wider"
+        >
           ${
             s.chip
               ? html`<span
