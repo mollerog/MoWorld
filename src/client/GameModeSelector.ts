@@ -41,12 +41,13 @@ import {
   type BackendReachabilityDetail,
 } from "./ServerList";
 import {
-  clearMatchHistory,
+  clearHistory,
   difficultyDisplayName,
-  loadMatchHistory,
+  loadHistory,
   mapDisplayName,
   type MatchRecord,
 } from "./MatchHistory";
+import { currentUser } from "./Account";
 import { listSavedGames } from "./SavedGamesApi";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import { lastUserMeResponse } from "./UserMeBroadcast";
@@ -309,6 +310,16 @@ export class GameModeSelector extends LitElement {
   @state() private saveCount: number | null = null;
   /** MoWorld: histórico das últimas partidas (null = fechado). */
   @state() private history: MatchRecord[] | null = null;
+  @state() private historyLoading = false;
+
+  private openHistory() {
+    this.history = [];
+    this.historyLoading = true;
+    void loadHistory().then((list) => {
+      this.history = list;
+      this.historyLoading = false;
+    });
+  }
   @state() private desktopUpdateState: DesktopUpdateState | null = null;
   @state() private viewerTrusted: boolean = false;
   @state() private viewerSignedIn: boolean = false;
@@ -737,7 +748,7 @@ export class GameModeSelector extends LitElement {
           <button
             type="button"
             data-moworld-history
-            @click=${() => (this.history = loadMatchHistory())}
+            @click=${() => this.openHistory()}
             class=${card}
           >
             <span class="${iconBox} bg-amber-500/15 text-amber-300">
@@ -858,6 +869,10 @@ export class GameModeSelector extends LitElement {
               >ÚLTIMAS PARTIDAS</span
             >
             <span class="text-xs text-white/40">(${list.length}/10)</span>
+            <span
+              class="hidden sm:inline rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/60"
+              >${currentUser() ? `☁ Conta de ${currentUser()!.name.split(" ")[0]}` : "📱 Neste aparelho"}</span
+            >
             <button
               type="button"
               aria-label="Fechar"
@@ -868,73 +883,76 @@ export class GameModeSelector extends LitElement {
             </button>
           </div>
           ${
-            list.length === 0
+            this.historyLoading
               ? html`<p class="py-10 text-center text-sm text-white/55">
-                  Nenhuma partida registrada ainda. Jogue uma partida Solo e ela
-                  aparece aqui.
+                  Carregando…
                 </p>`
-              : html`<div class="mt-3 min-h-0 overflow-y-auto">
-                    <div class="flex flex-col gap-2">
-                      ${list.map((r) => {
-                        const b = badge[r.result] ?? badge.playing;
-                        return html`<div
-                          data-moworld-history-row
-                          class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:grid-cols-[6.5rem_9rem_1fr_auto] sm:items-center"
-                        >
-                          <span class="text-xs text-white/55 tabular-nums"
-                            >${fmtDate(r.startedAt)}</span
+              : list.length === 0
+                ? html`<p class="py-10 text-center text-sm text-white/55">
+                    Nenhuma partida registrada ainda. Jogue uma partida Solo e
+                    ela aparece aqui.
+                  </p>`
+                : html`<div class="mt-3 min-h-0 overflow-y-auto">
+                      <div class="flex flex-col gap-2">
+                        ${list.map((r) => {
+                          const b = badge[r.result] ?? badge.playing;
+                          return html`<div
+                            data-moworld-history-row
+                            class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:grid-cols-[6.5rem_9rem_1fr_auto] sm:items-center"
                           >
-                          <span class="justify-self-end sm:justify-self-start"
-                            ><span
-                              class="inline-block rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${b[1]}"
-                              >${b[0]}</span
-                            ></span
-                          >
-                          <span class="truncate text-sm"
-                            >${mapDisplayName(r.map)} ·
-                            <span class="text-white/55"
-                              >${difficultyDisplayName(r.difficulty)}${
-                                r.resumed ? " · save" : ""
-                              }</span
-                            ></span
-                          >
-                          <span class="text-right text-sm tabular-nums"
-                            ><span class="text-white/55"
-                              >${fmtTime(r.seconds)}</span
+                            <span class="text-xs text-white/55 tabular-nums"
+                              >${fmtDate(r.startedAt)}</span
                             >
-                            ·
-                            <span class="font-bold text-amber-400"
-                              >${fmtPct(r.share)}</span
-                            >${
-                              r.bestShare > r.share + 0.5
-                                ? html`<span
-                                    class="block text-[11px] text-white/45"
-                                    >máx ${fmtPct(r.bestShare)}</span
-                                  >`
-                                : null
-                            }</span
-                          >
-                        </div>`;
-                      })}
+                            <span class="justify-self-end sm:justify-self-start"
+                              ><span
+                                class="inline-block rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${b[1]}"
+                                >${b[0]}</span
+                              ></span
+                            >
+                            <span class="truncate text-sm"
+                              >${mapDisplayName(r.map)} ·
+                              <span class="text-white/55"
+                                >${difficultyDisplayName(r.difficulty)}${
+                                  r.resumed ? " · save" : ""
+                                }</span
+                              ></span
+                            >
+                            <span class="text-right text-sm tabular-nums"
+                              ><span class="text-white/55"
+                                >${fmtTime(r.seconds)}</span
+                              >
+                              ·
+                              <span class="font-bold text-amber-400"
+                                >${fmtPct(r.share)}</span
+                              >${
+                                r.bestShare > r.share + 0.5
+                                  ? html`<span
+                                      class="block text-[11px] text-white/45"
+                                      >máx ${fmtPct(r.bestShare)}</span
+                                    >`
+                                  : null
+                              }</span
+                            >
+                          </div>`;
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    class="mt-3 flex items-center justify-between text-[11px] text-white/40"
-                  >
-                    <span>Tempo de jogo · território no fim da partida</span>
-                    <button
-                      type="button"
-                      class="rounded-lg px-2 py-1 hover:bg-white/10 hover:text-white"
-                      @click=${() => {
-                        if (confirm("Apagar o histórico de partidas?")) {
-                          clearMatchHistory();
-                          this.history = [];
-                        }
-                      }}
+                    <div
+                      class="mt-3 flex items-center justify-between text-[11px] text-white/40"
                     >
-                      Limpar histórico
-                    </button>
-                  </div>`
+                      <span>Tempo de jogo · território no fim da partida</span>
+                      <button
+                        type="button"
+                        class="rounded-lg px-2 py-1 hover:bg-white/10 hover:text-white"
+                        @click=${() => {
+                          if (confirm("Apagar o histórico de partidas?")) {
+                            void clearHistory().then(() => (this.history = []));
+                          }
+                        }}
+                      >
+                        Limpar histórico
+                      </button>
+                    </div>`
           }
         </div>
       </div>

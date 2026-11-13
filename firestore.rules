@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// MoWorld: cada pessoa só lê e escreve o próprio histórico de partidas.
+// Tudo o que não está liberado aqui é negado.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/matches/{matchId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function validMatch() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['id', 'startedAt', 'map', 'difficulty', 'result',
+                                 'share', 'bestShare', 'seconds', 'resumed'])
+          && d.id == matchId
+          && d.startedAt is string && d.startedAt.size() <= 40
+          && d.map is string && d.map.size() <= 60
+          && d.difficulty is string && d.difficulty.size() <= 20
+          && d.result in ['playing', 'total', 'victory', 'defeat', 'eliminated']
+          && d.share is number && d.share >= 0 && d.share <= 100
+          && d.bestShare is number && d.bestShare >= 0 && d.bestShare <= 100
+          && d.seconds is int && d.seconds >= 0
+          && d.resumed is bool;
+      }
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validMatch();
+    }
+  }
+}

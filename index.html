@@ -298,10 +298,21 @@
     <script>
       (function () {
         var origin = location.origin;
+        // MoWorld: além do próprio app, só o login Google e o banco do
+        // Firebase (conta opcional). Anúncios e rastreamento seguem bloqueados.
+        var allowedHosts = [
+          /(^|\.)googleapis\.com$/,
+          /^apis\.google\.com$/,
+          /^accounts\.google\.com$/,
+          /(^|\.)gstatic\.com$/,
+          /^moworld-114d8\.(web\.app|firebaseapp\.com)$/,
+        ];
         function local(u) {
           try {
             var url = new URL(u, location.href);
-            return url.origin === origin && url.pathname.indexOf("/api/") === -1;
+            if (url.origin === origin) return url.pathname.indexOf("/api/") === -1;
+            if (url.protocol !== "https:") return false;
+            return allowedHosts.some(function (re) { return re.test(url.hostname); });
           } catch (e) {
             return false;
           }

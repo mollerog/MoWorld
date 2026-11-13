@@ -1,5 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
+import "./AccountButton";
 import "./CosmeticBackground";
 import "./NavAccountMenu";
 import "./NavUtilityIcons";
@@ -87,6 +88,9 @@ export class PlayPage extends LitElement {
               >CONQUISTE O MUNDO REAL</span
             >
             <span class="h-px w-8 sm:w-16 bg-amber-300/60"></span>
+          </div>
+          <div class="mt-4">
+            <moworld-account-button></moworld-account-button>
           </div>
         </div>
 

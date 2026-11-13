@@ -1,7 +1,29 @@
-// MoWorld: histórico das últimas partidas, guardado no próprio aparelho
-// (localStorage). O MatchHistoryRecorder acompanha a partida em andamento e
-// atualiza o registro dela; a tela inicial mostra as 10 mais recentes.
+// MoWorld: histórico das últimas partidas.
+//
+// - Sem login: guardado no próprio aparelho (localStorage).
+// - Com login Google: guardado no Firestore em users/{uid}/matches/{id}
+//   (com cache offline). No primeiro login, o histórico do aparelho sobe para
+//   a conta e sai do aparelho.
+// O MatchHistoryRecorder acompanha a partida em andamento e atualiza o
+// registro dela; a tela inicial mostra as 10 mais recentes.
 import { GameUpdateType } from "@openfront/engine-api/game/GameUpdates";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
+import {
+  currentUser,
+  firestore,
+  initAccount,
+  onAccountChange,
+} from "./Account";
 import { Controller } from "./Controller";
 import { translateText } from "./Utils";
 import { GameView } from "./view";
@@ -30,6 +52,7 @@ export type MatchRecord = {
   resumed: boolean;
 };
 
+/** Histórico só deste aparelho (usado sem login). */
 export function loadMatchHistory(): MatchRecord[] {
   try {
     const raw = localStorage.getItem(KEY);
@@ -40,7 +63,15 @@ export function loadMatchHistory(): MatchRecord[] {
   }
 }
 
-function saveRecord(rec: MatchRecord) {
+function clearMatchHistory() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function saveLocal(rec: MatchRecord) {
   try {
     const list = loadMatchHistory().filter((r) => r.id !== rec.id);
     list.unshift(rec);
@@ -50,12 +81,83 @@ function saveRecord(rec: MatchRecord) {
   }
 }
 
-export function clearMatchHistory() {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {
-    // ignore
+function matchesOf(uid: string) {
+  const db = firestore();
+  return db ? collection(db, "users", uid, "matches") : null;
+}
+
+/** Grava (ou atualiza) uma partida: na conta se logado, senão no aparelho. */
+function saveRecord(rec: MatchRecord) {
+  const u = currentUser();
+  const col = u ? matchesOf(u.uid) : null;
+  if (u && col) {
+    // Sem await: com cache offline a gravação fica na fila e sobe depois.
+    setDoc(doc(col, rec.id), rec).catch((err) =>
+      console.warn("MatchHistory: cloud save failed", err),
+    );
+    return;
   }
+  saveLocal(rec);
+}
+
+/** As 10 partidas mais recentes: da conta (se logado) ou do aparelho. */
+export async function loadHistory(): Promise<MatchRecord[]> {
+  await initAccount();
+  const u = currentUser();
+  const col = u ? matchesOf(u.uid) : null;
+  if (!u || !col) return loadMatchHistory();
+  try {
+    const snap = await getDocs(
+      query(col, orderBy("startedAt", "desc"), limit(MAX)),
+    );
+    return snap.docs.map((d) => d.data() as MatchRecord);
+  } catch (err) {
+    console.warn("MatchHistory: cloud load failed", err);
+    return [];
+  }
+}
+
+export async function clearHistory(): Promise<void> {
+  const u = currentUser();
+  const col = u ? matchesOf(u.uid) : null;
+  if (!u || !col) {
+    clearMatchHistory();
+    return;
+  }
+  const snap = await getDocs(col);
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+/**
+ * Primeiro login neste aparelho: sobe o histórico local para a conta e
+ * limpa o local (para não subir de novo nem misturar com outra conta).
+ */
+async function migrateLocalToAccount() {
+  const u = currentUser();
+  const db = firestore();
+  const col = u ? matchesOf(u.uid) : null;
+  const local = loadMatchHistory();
+  if (!u || !db || !col || local.length === 0) return;
+  try {
+    const batch = writeBatch(db);
+    for (const rec of local) batch.set(doc(col, rec.id), rec);
+    await batch.commit();
+    clearMatchHistory();
+    console.log(`MatchHistory: ${local.length} partidas enviadas para a conta`);
+  } catch (err) {
+    console.warn("MatchHistory: migration failed (tenta de novo depois)", err);
+  }
+}
+
+let syncStarted = false;
+/** Liga a conta e a migração. Chamado na abertura do app. */
+export function startMatchHistorySync() {
+  if (syncStarted) return;
+  syncStarted = true;
+  onAccountChange(() => {
+    if (currentUser()) void migrateLocalToAccount();
+  });
+  void initAccount();
 }
 
 export function mapDisplayName(map: string): string {

@@ -14,7 +14,29 @@ permissions:
   contents: read
 
 jobs:
+  # Regras do Firestore testadas no emulador: se falharem, nada é publicado.
+  firestore-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Testar regras do Firestore
+        run: |
+          mkdir -p /tmp/rt && cd /tmp/rt
+          npm init -y > /dev/null
+          npm i --no-audit --no-fund firebase-tools @firebase/rules-unit-testing firebase
+          cp "$GITHUB_WORKSPACE/scripts/moworld/firestore-rules.test.mjs" t.mjs
+          RULES_PATH="$GITHUB_WORKSPACE/firestore.rules" npx firebase emulators:exec \
+            --project moworld-rules-test --only firestore "node --test t.mjs"
+
   build-deploy:
+    needs: firestore-rules
     runs-on: ubuntu-latest
     env:
       HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
@@ -50,3 +72,15 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: ${{ secrets.FIREBASE_PROJECT_ID }}
           channelId: live
+
+      - name: Publicar regras do Firestore
+        if: env.HAS_FIREBASE == 'true'
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          echo "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx --yes firebase-tools deploy --only firestore:rules \
+            --project "$PROJECT_ID" --non-interactive
+          rm -f "$RUNNER_TEMP/sa.json"
