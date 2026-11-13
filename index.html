@@ -414,6 +414,12 @@
         }
         .moworld-bar .mw-unit-cost { display: inline !important; }
       }
+      /* Modo de construção ativo: destaque forte (toque de novo desliga). */
+      .moworld-bar .mw-unit-active {
+        border-color: #f59e0b !important;
+        background: rgba(245, 158, 11, 0.22) !important;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.55), 0 0 12px rgba(245, 158, 11, 0.45);
+      }
       /* MoWorld: painéis da partida no mesmo padrão da barra de baixo
          (azul-marinho escuro, borda fina clara, cantos arredondados). */
       body.in-game .bg-gray-800\/92,
@@ -979,6 +985,7 @@
         class="lg:col-start-1 lg:justify-self-start"
       ></game-left-sidebar>
       <moworld-target-popup></moworld-target-popup>
+      <moworld-nuke-batch></moworld-nuke-batch>
       <moworld-control-bar></moworld-control-bar>
       <player-info-overlay
         class="lg:col-start-2 lg:min-w-0"

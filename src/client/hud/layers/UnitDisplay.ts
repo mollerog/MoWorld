@@ -775,7 +775,7 @@ export class UnitDisplay extends LitElement implements Controller {
               ? "pointer-fine:hover:bg-gray-400/10"
               : "pointer-fine:hover:bg-gray-800"
           }
-             rounded-sm text-white ${selected ? "bg-slate-400/20" : ""}
+             rounded-sm text-white ${selected ? "bg-slate-400/20 mw-unit-active" : ""}
              ${this.tutorialHighlight === unitType ? "tutorial-highlight" : ""}"
           @click=${(event: Event) => {
             const item = (event.currentTarget as HTMLElement).closest(

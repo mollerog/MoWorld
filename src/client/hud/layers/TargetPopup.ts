@@ -99,26 +99,48 @@ export class TargetPopup extends LitElement implements Controller {
     this.bottomPx = Math.max(8, window.innerHeight - top + 8);
 
     // Segundo toque no mesmo alvo (mesma tribo/nação/jogador, ou terra livre
-    // de novo) com o pop-up aberto: ataca direto e mantém o pop-up.
+    // de novo): ataca direto e fecha o pop-up — o ataque já foi a resposta.
+    const key = owner?.id() ?? null;
     const cur = this.target;
     if (
       cur !== null &&
-      (cur.owner?.id() ?? null) === (owner?.id() ?? null) &&
+      (cur.owner?.id() ?? null) === key &&
       (cur.actions.canAttack || this.canBoat(cur.actions))
     ) {
-      if (cur.actions.canAttack) this.attack();
-      else this.boat();
+      this.attackAndClose(cur);
+      return;
+    }
+    // Toque duplo rápido: o primeiro ainda nem abriu o pop-up. Marca a
+    // consulta em andamento para atacar assim que ela voltar, sem abrir.
+    const pending = this.request as {
+      key: string | null;
+      auto?: boolean;
+    } | null;
+    if (cur === null && pending !== null && pending.key === key) {
+      pending.auto = true;
       return;
     }
 
-    const request = {};
+    const request: { key: string | null; auto?: boolean } = { key };
     this.request = request;
     me.actions(tile)
       .then((actions) => {
         if (this.request !== request) return;
-        this.target = { tile, owner, actions };
+        const target = { tile, owner, actions };
+        if (request.auto && (actions.canAttack || this.canBoat(actions))) {
+          this.attackAndClose(target);
+          return;
+        }
+        this.target = target;
       })
       .catch((err) => console.warn("TargetPopup: actions failed", err));
+  }
+
+  private attackAndClose(t: Target) {
+    this.target = t;
+    if (t.actions.canAttack) this.attack();
+    else this.boat();
+    this.close();
   }
 
   private close() {

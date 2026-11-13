@@ -48,6 +48,7 @@ import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
 import { ControlBar } from "./layers/ControlBar";
 import { MatchHistoryRecorder } from "../MatchHistory";
+import { NukeBatchBar } from "./layers/NukeBatchBar";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TotalVictory } from "./layers/TotalVictory";
 import { TutorialPanel } from "./layers/TutorialPanel";
@@ -346,6 +347,18 @@ export function createRenderer(
   targetPopup.transform = transformHandler;
   targetPopup.uiState = uiState;
 
+  // MoWorld: lote de bombas (celular).
+  const nukeBatch = document.querySelector(
+    "moworld-nuke-batch",
+  ) as NukeBatchBar;
+  if (!(nukeBatch instanceof NukeBatchBar)) {
+    console.error("nuke batch bar not found");
+  }
+  nukeBatch.game = game;
+  nukeBatch.eventBus = eventBus;
+  nukeBatch.transform = transformHandler;
+  nukeBatch.uiState = uiState;
+
   const tutorialPanel = document.querySelector(
     "tutorial-panel",
   ) as TutorialPanel;
@@ -417,6 +430,7 @@ export function createRenderer(
     inGamePromo,
     tutorialPanel,
     targetPopup,
+    nukeBatch,
     controlBar,
     totalVictory,
     new MatchHistoryRecorder(game),

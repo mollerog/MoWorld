@@ -20,7 +20,7 @@ import {
   listNukeBreakAlliance,
   wouldNukeBreakAlliance,
 } from "@openfront/engine-lib/execution/NukeAlliance";
-import { EventBus } from "@openfront/shared/EventBus";
+import { EventBus, GameEvent } from "@openfront/shared/EventBus";
 import { Controller } from "../Controller";
 import {
   ConfirmGhostStructureEvent,
@@ -48,8 +48,31 @@ import { UserSettings } from "../UserSettings";
 import { GameView } from "../view";
 
 /** True for nuke types (AtomBomb, HydrogenBomb): ghost is preserved after placement so user can place multiple or keep selection (Enter/key confirm). */
+// MoWorld: o modo de construção fica ativo depois de construir (cidades,
+// navios, bombas…); sai tocando de novo no botão da barra (ou Esc).
 export function shouldPreserveGhostAfterBuild(unitType: UnitType): boolean {
-  return unitType === UnitType.AtomBomb || unitType === UnitType.HydrogenBomb;
+  void unitType;
+  return true;
+}
+
+function isNukeType(unitType: UnitType | null | undefined): boolean {
+  return (
+    unitType === UnitType.AtomBomb ||
+    unitType === UnitType.HydrogenBomb ||
+    unitType === UnitType.MIRV
+  );
+}
+
+/** MoWorld: alvos de bomba marcados no celular, à espera de "Lançar". */
+export class NukeBatchChangedEvent implements GameEvent {
+  constructor(
+    public readonly unitType: UnitType | null,
+    public readonly tiles: readonly TileRef[],
+  ) {}
+}
+/** Pede para lançar (true) ou descartar (false) os alvos marcados. */
+export class NukeBatchCommandEvent implements GameEvent {
+  constructor(public readonly launch: boolean) {}
 }
 
 function requiresMissileSilo(unitType: UnitType | null | undefined): boolean {
@@ -318,6 +341,10 @@ export class BuildPreviewController implements Controller {
   init() {
     this.eventBus.on(MouseMoveEvent, (e) => this.moveGhost(e));
     this.eventBus.on(MouseUpEvent, (e) => this.requestConfirmStructure(e));
+    this.eventBus.on(NukeBatchCommandEvent, (e) => {
+      if (e.launch) this.launchNukeTargets();
+      else this.clearNukeTargets();
+    });
     this.eventBus.on(TouchGhostPlacementEvent, (e) =>
       this.handleTouchPlacement(e),
     );
@@ -1191,7 +1218,7 @@ export class BuildPreviewController implements Controller {
           this.uiState.upgradeMultiplier || 1,
         ),
       );
-      this.removeGhostStructure();
+      if (endsPlacement) this.removeGhostStructure();
     } else if (unit.canBuild !== false) {
       const unitType = unit.type;
 
@@ -1216,7 +1243,7 @@ export class BuildPreviewController implements Controller {
       if (endsPlacement || !shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
       }
-    } else {
+    } else if (endsPlacement) {
       this.removeGhostStructure();
     }
   }
@@ -1303,6 +1330,21 @@ export class BuildPreviewController implements Controller {
   private handleTouchPlacement(e: TouchGhostPlacementEvent): void {
     this.touchPlacementMode = true;
     if (this.syncGhostState()) return;
+    // MoWorld: bombas — cada toque marca (ou desmarca) um alvo; "Lançar"
+    // na barra de confirmação dispara todos de uma vez.
+    const ghostType = this.uiState.ghostStructure;
+    if (isNukeType(ghostType)) {
+      this.toggleNukeTarget(e.x, e.y);
+      this.moveTouchPreview(e.x, e.y);
+      return;
+    }
+    // MoWorld: construções e navios — cada toque já constrói ali (o modo
+    // continua ativo até tocar de novo no botão).
+    if (ghostType !== null) {
+      this.moveTouchPreview(e.x, e.y);
+      this.requestConfirmStructure(new MouseUpEvent(e.x, e.y), false);
+      return;
+    }
     if (this.touchPreviewTile !== null && this.isNearTouchPreview(e.x, e.y)) {
       const preview = this.touchPreviewScreenPosition();
       if (preview !== null) {
@@ -1450,7 +1492,66 @@ export class BuildPreviewController implements Controller {
     this.clearNukeTrajectory();
   }
 
+  // ---- MoWorld: lote de bombas (celular) ----
+  private nukeTargets: TileRef[] = [];
+  private nukeTargetsType: UnitType | null = null;
+
+  private emitNukeBatch() {
+    this.eventBus.emit(
+      new NukeBatchChangedEvent(this.nukeTargetsType, [...this.nukeTargets]),
+    );
+  }
+
+  private clearNukeTargets() {
+    if (this.nukeTargets.length === 0 && this.nukeTargetsType === null) return;
+    this.nukeTargets = [];
+    this.nukeTargetsType = null;
+    this.emitNukeBatch();
+  }
+
+  private toggleNukeTarget(x: number, y: number) {
+    const cell = this.transformHandler.screenToWorldCoordinates(x, y);
+    if (!this.game.isValidCoord(cell.x, cell.y)) return;
+    const type = this.uiState.ghostStructure;
+    if (type !== this.nukeTargetsType) {
+      this.nukeTargets = [];
+      this.nukeTargetsType = type;
+    }
+    // Toque perto de um alvo já marcado (≈ 22px na tela) desmarca.
+    const near = this.nukeTargets.findIndex((t) => {
+      const p = this.transformHandler.worldToScreenCoordinates(
+        new Cell(this.game.x(t), this.game.y(t)),
+      );
+      return Math.hypot(p.x - x, p.y - y) < 22;
+    });
+    if (near >= 0) this.nukeTargets.splice(near, 1);
+    else this.nukeTargets.push(this.game.ref(cell.x, cell.y));
+    this.emitNukeBatch();
+  }
+
+  private launchNukeTargets() {
+    const type = this.uiState.ghostStructure;
+    if (!isNukeType(type) || type !== this.nukeTargetsType) {
+      this.clearNukeTargets();
+      return;
+    }
+    const preventStacking = !!this.uiState.preventStacking;
+    for (const tile of this.nukeTargets) {
+      this.pendingConfirmations.push({
+        tile,
+        ghostType: type as PendingConfirmation["ghostType"],
+        preventStacking,
+        ghostGeneration: this.ghostGeneration,
+        endsPlacement: false,
+      });
+    }
+    this.nukeTargets = [];
+    this.emitNukeBatch();
+    this.processPendingConfirmations();
+  }
+
   private removeGhostStructure() {
+    this.clearNukeTargets();
     const hadGhost =
       this.ghostUnit !== null || this.uiState.ghostStructure !== null;
     this.touchPlacementMode = false;
