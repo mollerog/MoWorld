@@ -98,6 +98,19 @@ export class TargetPopup extends LitElement implements Controller {
     }
     this.bottomPx = Math.max(8, window.innerHeight - top + 8);
 
+    // Segundo toque no mesmo alvo (mesma tribo/nação/jogador, ou terra livre
+    // de novo) com o pop-up aberto: ataca direto e mantém o pop-up.
+    const cur = this.target;
+    if (
+      cur !== null &&
+      (cur.owner?.id() ?? null) === (owner?.id() ?? null) &&
+      (cur.actions.canAttack || this.canBoat(cur.actions))
+    ) {
+      if (cur.actions.canAttack) this.attack();
+      else this.boat();
+      return;
+    }
+
     const request = {};
     this.request = request;
     me.actions(tile)
@@ -111,6 +124,7 @@ export class TargetPopup extends LitElement implements Controller {
   private close() {
     this.request = null;
     this.target = null;
+    this.feedback = null;
   }
 
   private sendTroops(): number {
@@ -122,17 +136,38 @@ export class TargetPopup extends LitElement implements Controller {
     const t = this.target;
     const me = this.game.myPlayer();
     if (!t || !me) return;
+    const sent = this.sendTroops();
     this.handler.handleAttack(me, t.owner?.id() ?? null);
     this.eventBus.emit(new CloseRadialMenuEvent());
-    this.close();
+    this.flash(`✓ ${renderTroops(sent)} tropas enviadas`);
+  }
+
+  private canBoat(actions: PlayerActions): boolean {
+    return actions.buildableUnits.some(
+      (u) => u.type === UnitType.TransportShip && u.canBuild,
+    );
+  }
+
+  /** Mensagem curta no rodapé do pop-up (ex.: tropas enviadas). */
+  private feedback: string | null = null;
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private flash(text: string) {
+    this.feedback = text;
+    this.requestUpdate();
+    if (this.feedbackTimer) clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = setTimeout(() => {
+      this.feedback = null;
+      this.requestUpdate();
+    }, 1600);
   }
 
   private boat() {
     const t = this.target;
     const me = this.game.myPlayer();
     if (!t || !me) return;
+    const sent = this.sendTroops();
     this.handler.handleBoatAttack(me, t.tile);
-    this.close();
+    this.flash(`⛵ ${renderTroops(sent)} tropas a caminho`);
   }
 
   private ally() {
@@ -170,9 +205,7 @@ export class TargetPopup extends LitElement implements Controller {
     const allied = owner !== null && me.isFriendly(owner);
     const traitor = owner?.isTraitor() ?? false;
     const canAttack = t.actions.canAttack;
-    const canBoat = t.actions.buildableUnits.some(
-      (u) => u.type === UnitType.TransportShip && u.canBuild,
-    );
+    const canBoat = this.canBoat(t.actions);
     const canAlly =
       owner !== null &&
       !allied &&
@@ -282,8 +315,12 @@ export class TargetPopup extends LitElement implements Controller {
               : nothing
           }
         </div>
-        <div class="mt-2 text-center text-[11px] text-white/40">
-          Segure o dedo no mapa para mais opções
+        <div
+          class="mt-2 text-center text-[11px] ${
+            this.feedback ? "font-bold text-green-400" : "text-white/40"
+          }"
+        >
+          ${this.feedback ?? "Toque de novo no alvo para atacar · segure para mais opções"}
         </div>
       </div>
     `;

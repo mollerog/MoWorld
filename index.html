@@ -469,6 +469,37 @@
       body.in-game game-left-sidebar .bg-gray-700\/50 {
         background-color: rgb(255 255 255 / 0.05) !important;
       }
+      /* MoWorld: celular deitado — barra de ações no centro, mensagens no
+         canto direito (menores) e o pop-up de alvo compacto no esquerdo. */
+      @media (max-width: 1023px) and (orientation: landscape) {
+        body.in-game .moworld-hud-grid {
+          flex-direction: row !important;
+          justify-content: center !important;
+        }
+        body.in-game .moworld-hud-col {
+          margin-left: auto;
+          margin-right: auto;
+        }
+        body.in-game .moworld-bar {
+          border-top-left-radius: 0.9rem !important;
+          border-top-right-radius: 0.9rem !important;
+        }
+        body.in-game .moworld-events {
+          position: absolute !important;
+          right: calc(4px + env(safe-area-inset-right));
+          bottom: calc(100% + 4px);
+          margin: 0 !important;
+          align-items: flex-end !important;
+          max-width: 55vw;
+          transform: scale(0.8);
+          transform-origin: bottom right;
+        }
+        body.in-game [data-moworld-target-popup] {
+          left: calc(4px + env(safe-area-inset-left)) !important;
+          transform: scale(0.8);
+          transform-origin: bottom left;
+        }
+      }
       /* MoWorld: título da tela inicial */
       .moworld-title {
         font-family: "Arial Black", "Segoe UI Black", "Inter", system-ui, sans-serif;
