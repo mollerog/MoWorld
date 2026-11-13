@@ -430,6 +430,15 @@
           margin: 0 !important;
         }
       }
+      /* Celular/tablet: o painel da esquerda é fixo no canto; mesmo
+         afastamento do painel da direita (8px + área segura). */
+      @media (max-width: 1023px) {
+        body.in-game game-left-sidebar .bg-gray-800\/92 {
+          top: calc(8px + env(safe-area-inset-top)) !important;
+          left: calc(8px + env(safe-area-inset-left)) !important;
+          margin: 0 !important;
+        }
+      }
       body.in-game game-left-sidebar .bg-gray-800\/92,
       body.in-game game-right-sidebar .bg-gray-800\/92 {
         min-height: 44px;
