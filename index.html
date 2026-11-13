@@ -600,19 +600,26 @@
     <div id="hex-grid" class="fixed inset-0 -z-50 pointer-events-none">
       <div
         id="background-layer"
-        class="absolute inset-x-0 top-0 -bottom-[4cm] bg-cover opacity-30 [filter:brightness(1.0)] dark:[filter:sepia(0.2)_saturate(1.2)_hue-rotate(180deg)_brightness(0.9)]"
+        class="absolute inset-0 bg-cover"
         style="
           background-image: var(--background-image-url);
-          background-position: center top;
+          background-position: center 40%;
+          image-rendering: pixelated;
+          filter: brightness(0.62) saturate(1.05);
         "
+      ></div>
+      <!-- MoWorld: escurece as bordas pra destacar o título e os botões -->
+      <div
+        class="absolute inset-0"
+        style="background: radial-gradient(ellipse at 50% 42%, rgb(2 6 23 / 0.15) 0%, rgb(2 6 23 / 0.55) 60%, rgb(2 6 23 / 0.85) 100%);"
       ></div>
       <div
         class="absolute inset-0 bg-center bg-no-repeat bg-contain hidden lg:block"
-        style="background-image: var(--desktop-logo-image-url); opacity: 0.5"
+        style="background-image: var(--desktop-logo-image-url); opacity: 0.5; display: none"
       ></div>
       <div
         class="absolute inset-0 bg-center bg-no-repeat bg-contain lg:hidden"
-        style="background-image: var(--mobile-logo-image-url); opacity: 0.5"
+        style="background-image: var(--mobile-logo-image-url); opacity: 0.5; display: none"
       ></div>
     </div>
 

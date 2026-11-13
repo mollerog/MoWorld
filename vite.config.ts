@@ -305,8 +305,9 @@ export default defineConfig(({ mode }) => {
       assetManifest,
       cdnBase,
     ),
+    // MoWorld: fundo gerado do mapa World (scripts/moworld/make-home-background.py)
     backgroundImageUrl: buildAssetUrl(
-      "images/background.webp",
+      "images/moworld-bg.webp",
       assetManifest,
       cdnBase,
     ),
