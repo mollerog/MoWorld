@@ -544,6 +544,33 @@
           margin-top: 128px !important;
         }
       }
+      /* Celular em pé (variante side-bar do jogo: <1024px e retrato):
+         coluna de construção começa abaixo da barra de controle, termina
+         acima da barra de baixo e usa botões mais baixos; aviso de pausa
+         também desce para baixo da barra de controle. */
+      @media (max-width: 1023px) and (orientation: portrait) {
+        body.in-game {
+          --mw-top-clear: calc(env(safe-area-inset-top) + 142px);
+        }
+        body.in-game .moworld-bar > unit-display {
+          top: var(--mw-top-clear) !important;
+          transform: none !important;
+          translate: none !important;
+        }
+        body.in-game .moworld-bar .unit-display-scroll {
+          max-height: calc(100dvh - var(--mw-top-clear) - 128px - env(safe-area-inset-bottom)) !important;
+        }
+        body.in-game .moworld-bar .mw-unit-cell {
+          height: 2.4rem !important;
+        }
+        body.in-game .moworld-bar .mw-unit-cell img {
+          width: 1.25rem !important;
+          height: 1.25rem !important;
+        }
+        body.in-game .mw-headsup {
+          top: var(--mw-top-clear) !important;
+        }
+      }
       /* Celular deitado: mais compacto no meio. */
       @media (max-width: 1023px) and (orientation: landscape) {
         moworld-control-bar {

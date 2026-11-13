@@ -643,7 +643,8 @@ export class ControlPanel extends LitElement implements Controller {
                     >
                   </div>
                   <span class="text-[11px] text-slate-400 tabular-nums"
-                    >${share < 0.01 ? "<0.01" : share.toFixed(2)}% do mundo</span
+                    >${share < 0.01 ? "<0.01" : share.toFixed(2)}% do
+                    mundo</span
                   >
                 </div>
                 <div
@@ -737,7 +738,8 @@ export class ControlPanel extends LitElement implements Controller {
           <span class="flex items-center gap-1 ${label}">
             <img src=${goldCoinIcon} width="10" height="10" />Ouro
           </span>
-          <span class="text-xl font-extrabold text-yellow-400 tabular-nums leading-tight"
+          <span
+            class="text-xl font-extrabold text-yellow-400 tabular-nums leading-tight"
             >${renderNumber(this._gold)}</span
           >
         </div>
@@ -795,9 +797,7 @@ export class ControlPanel extends LitElement implements Controller {
         </div>
         <!-- Sword + % and troop count label -->
         <!-- MoWorld: escondido; os botões de % já mostram a escolha. -->
-        <div
-          class="hidden flex-col items-center justify-center shrink-0"
-        >
+        <div class="hidden flex-col items-center justify-center shrink-0">
           <div class="flex items-center gap-0.5">
             <img
               src=${swordIcon}
@@ -822,7 +822,7 @@ export class ControlPanel extends LitElement implements Controller {
           aria-label=${translateText("control_panel.attack_ratio_button", {
             percent: (this.attackRatio * 100).toFixed(0),
           })}
-          class="hidden side-bar:flex w-[4.25rem] shrink-0 items-center justify-center gap-1 border rounded-md p-1 ${
+          class="hidden w-[4.25rem] shrink-0 items-center justify-center gap-1 border rounded-md p-1 ${
             this._ratioPopupOpen ? "border-aquarius" : "border-gray-600"
           } ${this.tutorialHighlightClass("attack_ratio")}"
           translate="no"
@@ -879,6 +879,15 @@ export class ControlPanel extends LitElement implements Controller {
         >
           ${this.renderRatioChips(true)}
         </div>
+      </div>
+      <!-- MoWorld: celular em pé — fileira fixa de % de tropas. -->
+      <div
+        class="hidden side-bar:flex mt-1.5 ${this.tutorialHighlightClass(
+          "attack_ratio",
+        )}"
+        translate="no"
+      >
+        ${this.renderRatioChips()}
       </div>
     `;
   }

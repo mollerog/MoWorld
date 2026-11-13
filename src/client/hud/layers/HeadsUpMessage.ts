@@ -301,7 +301,7 @@ export class HeadsUpMessage extends LitElement implements Controller {
           this.isVisible
             ? html`
                 <div
-                  class="fixed top-[15%] left-1/2 -translate-x-1/2 z-[799]
+                  class="mw-headsup fixed top-[15%] left-1/2 -translate-x-1/2 z-[799]
                             inline-flex items-center justify-center min-h-8 lg:min-h-10
                             w-fit max-w-[90vw]
                             bg-gray-800/70 rounded-md lg:rounded-lg
