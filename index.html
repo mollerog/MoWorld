@@ -403,6 +403,48 @@
         }
         .moworld-bar .mw-unit-cost { display: inline !important; }
       }
+      /* MoWorld: painéis da partida no mesmo padrão da barra de baixo
+         (azul-marinho escuro, borda fina clara, cantos arredondados). */
+      body.in-game .bg-gray-800\/92,
+      body.in-game .bg-gray-800\/90,
+      body.in-game .bg-gray-800\/70,
+      body.in-game .bg-gray-800.backdrop-blur-sm {
+        background-color: rgb(15 23 42 / 0.92) !important;
+        border: 1px solid rgb(255 255 255 / 0.1);
+        box-shadow: 0 10px 30px rgb(0 0 0 / 0.4);
+      }
+      /* Painéis presos nas bordas viram cartões flutuantes. */
+      body.in-game game-right-sidebar .bg-gray-800\/92,
+      body.in-game game-left-sidebar .bg-gray-800\/92,
+      body.in-game replay-panel .bg-gray-800\/92 {
+        margin: 8px;
+        border-radius: 0.9rem !important;
+      }
+      body.in-game player-info-overlay .bg-gray-800\/92 {
+        margin-top: 8px;
+        border-radius: 0.9rem !important;
+      }
+      body.in-game attacks-display .bg-gray-800\/92 {
+        border-radius: 0.7rem !important;
+        margin-bottom: 4px;
+      }
+      @media (min-width: 640px) {
+        body.in-game events-display .bg-gray-800\/92,
+        body.in-game actionable-events .bg-gray-800\/92 {
+          border-radius: 0.9rem !important;
+        }
+      }
+      /* Botões e caixinhas internas: borda mais suave. */
+      body.in-game game-left-sidebar .border-slate-500,
+      body.in-game player-info-overlay .border-gray-500,
+      body.in-game player-info-overlay .border-gray-600,
+      body.in-game replay-panel .border-gray-500 {
+        border-color: rgb(255 255 255 / 0.14) !important;
+        border-radius: 0.5rem !important;
+      }
+      body.in-game game-left-sidebar .bg-gray-700\/50 {
+        background-color: rgb(255 255 255 / 0.05) !important;
+      }
       /* MoWorld: título da tela inicial */
       .moworld-title {
         font-family: "Arial Black", "Segoe UI Black", "Inter", system-ui, sans-serif;
