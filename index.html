@@ -500,6 +500,39 @@
           transform-origin: bottom left;
         }
       }
+      /* MoWorld: contador de controle no topo, entre os painéis laterais. */
+      moworld-control-bar {
+        position: fixed;
+        top: calc(8px + env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(460px, calc(100vw - 500px));
+        z-index: 40;
+        pointer-events: none;
+      }
+      /* O painel do jogador (topo) desce para não cobrir o contador. */
+      body.in-game player-info-overlay .bg-gray-800\/92 {
+        margin-top: 76px !important;
+      }
+      /* Celular em pé: largura toda, abaixo dos botões do topo. */
+      @media (max-width: 767px) and (orientation: portrait) {
+        moworld-control-bar {
+          top: calc(60px + env(safe-area-inset-top));
+          left: 8px;
+          right: 8px;
+          width: auto;
+          transform: none;
+        }
+        body.in-game player-info-overlay .bg-gray-800\/92 {
+          margin-top: 128px !important;
+        }
+      }
+      /* Celular deitado: mais compacto no meio. */
+      @media (max-width: 1023px) and (orientation: landscape) {
+        moworld-control-bar {
+          width: min(372px, calc(100vw - 486px));
+        }
+      }
       /* MoWorld: título da tela inicial */
       .moworld-title {
         font-family: "Arial Black", "Segoe UI Black", "Inter", system-ui, sans-serif;
@@ -902,6 +935,7 @@
         class="lg:col-start-1 lg:justify-self-start"
       ></game-left-sidebar>
       <moworld-target-popup></moworld-target-popup>
+      <moworld-control-bar></moworld-control-bar>
       <player-info-overlay
         class="lg:col-start-2 lg:min-w-0"
       ></player-info-overlay>

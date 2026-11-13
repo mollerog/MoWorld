@@ -46,6 +46,7 @@ import { PlayerPanel } from "./layers/PlayerPanel";
 import { ReplayPanel } from "./layers/ReplayPanel";
 import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
+import { ControlBar } from "./layers/ControlBar";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TutorialPanel } from "./layers/TutorialPanel";
 import { UnitDisplay } from "./layers/UnitDisplay";
@@ -312,6 +313,15 @@ export function createRenderer(
   }
   inGamePromo.game = game;
 
+  // MoWorld: contador de controle no topo.
+  const controlBar = document.querySelector(
+    "moworld-control-bar",
+  ) as ControlBar;
+  if (!(controlBar instanceof ControlBar)) {
+    console.error("control bar not found");
+  }
+  controlBar.game = game;
+
   // MoWorld: pop-up de alvo no toque rápido (celular).
   const targetPopup = document.querySelector(
     "moworld-target-popup",
@@ -395,6 +405,7 @@ export function createRenderer(
     inGamePromo,
     tutorialPanel,
     targetPopup,
+    controlBar,
     onboardingOverlay,
     alertFrame,
     performanceOverlay,
