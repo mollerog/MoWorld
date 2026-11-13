@@ -40,6 +40,13 @@ import {
   retryServerList,
   type BackendReachabilityDetail,
 } from "./ServerList";
+import {
+  clearMatchHistory,
+  difficultyDisplayName,
+  loadMatchHistory,
+  mapDisplayName,
+  type MatchRecord,
+} from "./MatchHistory";
 import { listSavedGames } from "./SavedGamesApi";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import { lastUserMeResponse } from "./UserMeBroadcast";
@@ -226,8 +233,7 @@ export function reportMultiplayerRefusal(backendOutage: boolean): void {
   // no listener.
   (
     document.querySelector("desktop-status-bar") as
-      | (HTMLElement & { wiggle?: () => void })
-      | null
+      (HTMLElement & { wiggle?: () => void }) | null
   )?.wiggle?.();
   // Keyed on the shell, not on the element: <desktop-status-bar> is in
   // index.html on every build and simply renders nothing on the web, so its
@@ -301,6 +307,8 @@ export class GameModeSelector extends LitElement {
   @state() private inputValid: boolean = true;
   /** MoWorld: quantos jogos salvos existem no aparelho (null = carregando). */
   @state() private saveCount: number | null = null;
+  /** MoWorld: histórico das últimas partidas (null = fechado). */
+  @state() private history: MatchRecord[] | null = null;
   @state() private desktopUpdateState: DesktopUpdateState | null = null;
   @state() private viewerTrusted: boolean = false;
   @state() private viewerSignedIn: boolean = false;
@@ -677,12 +685,21 @@ export class GameModeSelector extends LitElement {
           @click=${this.openSinglePlayerModal}
           class="relative flex items-center justify-center gap-3 h-20 sm:h-24 rounded-2xl bg-amber-400 text-slate-900 shadow-[0_6px_0_#b45309] transition-all hover:bg-amber-300 active:translate-y-1 active:shadow-[0_2px_0_#b45309] disabled:opacity-50 disabled:pointer-events-none"
         >
-          <svg class="size-7 sm:size-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z" />
+          <svg
+            class="size-7 sm:size-8"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"
+            />
           </svg>
-          <span class="text-2xl sm:text-3xl font-black tracking-[0.18em]">JOGAR SOLO</span>
+          <span class="text-2xl sm:text-3xl font-black tracking-[0.18em]"
+            >JOGAR SOLO</span
+          >
         </button>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-3 gap-2 sm:gap-3">
           <button
             type="button"
             data-moworld-continue
@@ -691,14 +708,61 @@ export class GameModeSelector extends LitElement {
             class=${card}
           >
             <span class="${iconBox} bg-sky-500/15 text-sky-300">
-              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <svg
+                class="size-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+                />
                 <path d="M17 21v-8H7v8M7 3v5h8" />
               </svg>
             </span>
             <span class="min-w-0">
-              <span class="block text-sm sm:text-base font-black tracking-wider text-white">CONTINUAR</span>
-              <span class="block text-xs text-white/55 leading-tight">${savesLabel}</span>
+              <span
+                class="block text-sm sm:text-base font-black tracking-wider text-white"
+                >CONTINUAR</span
+              >
+              <span class="block text-xs text-white/55 leading-tight"
+                >${savesLabel}</span
+              >
+            </span>
+          </button>
+          <button
+            type="button"
+            data-moworld-history
+            @click=${() => (this.history = loadMatchHistory())}
+            class=${card}
+          >
+            <span class="${iconBox} bg-amber-500/15 text-amber-300">
+              <svg
+                class="size-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 3v18h18" />
+                <path d="M7 15l4-4 3 3 5-6" />
+              </svg>
+            </span>
+            <span class="min-w-0">
+              <span
+                class="block text-sm sm:text-base font-black tracking-wider text-white"
+                >HISTÓRICO</span
+              >
+              <span class="block text-xs text-white/55 leading-tight"
+                >Últimas partidas</span
+              >
             </span>
           </button>
           <button
@@ -709,21 +773,173 @@ export class GameModeSelector extends LitElement {
             class=${card}
           >
             <span class="${iconBox} bg-emerald-500/15 text-emerald-300">
-              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg
+                class="size-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M22 10 12 5 2 10l10 5 10-5z" />
                 <path d="M6 12v5c3 2 9 2 12 0v-5" />
               </svg>
             </span>
             <span class="min-w-0">
-              <span class="block text-sm sm:text-base font-black tracking-wider text-white">TUTORIAL</span>
-              <span class="block text-xs text-white/55 leading-tight">Aprenda o básico</span>
+              <span
+                class="block text-sm sm:text-base font-black tracking-wider text-white"
+                >TUTORIAL</span
+              >
+              <span class="block text-xs text-white/55 leading-tight"
+                >Aprenda o básico</span
+              >
             </span>
           </button>
         </div>
       </div>
+      ${this.history !== null ? this.renderHistory(this.history) : null}
     `;
   }
 
+  // MoWorld: tabela das últimas 10 partidas.
+  private renderHistory(list: MatchRecord[]) {
+    const badge: Record<string, [string, string]> = {
+      total: [
+        "🏆 Vitória total",
+        "bg-amber-400/15 text-amber-300 border-amber-400/30",
+      ],
+      victory: [
+        "✓ Vitória",
+        "bg-green-500/15 text-green-300 border-green-400/30",
+      ],
+      defeat: ["✗ Derrota", "bg-red-500/15 text-red-300 border-red-400/30"],
+      eliminated: [
+        "✗ Eliminado",
+        "bg-red-500/15 text-red-300 border-red-400/30",
+      ],
+      playing: ["⏸ Interrompida", "bg-white/5 text-slate-300 border-white/15"],
+    };
+    const fmtDate = (iso: string) => {
+      const d = new Date(iso);
+      const p = (n: number) => String(n).padStart(2, "0");
+      return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    };
+    const fmtTime = (sec: number) => {
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s2 = sec % 60;
+      return h > 0
+        ? `${h}h${String(m).padStart(2, "0")}`
+        : `${m}:${String(s2).padStart(2, "0")}`;
+    };
+    const fmtPct = (v: number) =>
+      v <= 0
+        ? "0%"
+        : v >= 99.95
+          ? "100%"
+          : v < 0.01
+            ? "<0.01%"
+            : `${v < 10 ? v.toFixed(2) : v.toFixed(1)}%`;
+    return html`
+      <div
+        class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm"
+        data-moworld-history-modal
+        @click=${(e: Event) => {
+          if (e.target === e.currentTarget) this.history = null;
+        }}
+      >
+        <div
+          class="flex max-h-[90dvh] w-[min(640px,100%)] flex-col rounded-3xl border border-white/10 bg-slate-950/95 p-4 sm:p-5 text-white shadow-2xl"
+        >
+          <div class="flex items-center gap-2">
+            <span class="text-lg sm:text-xl font-black tracking-wider"
+              >ÚLTIMAS PARTIDAS</span
+            >
+            <span class="text-xs text-white/40">(${list.length}/10)</span>
+            <button
+              type="button"
+              aria-label="Fechar"
+              class="ml-auto flex size-9 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white"
+              @click=${() => (this.history = null)}
+            >
+              ✕
+            </button>
+          </div>
+          ${
+            list.length === 0
+              ? html`<p class="py-10 text-center text-sm text-white/55">
+                  Nenhuma partida registrada ainda. Jogue uma partida Solo e ela
+                  aparece aqui.
+                </p>`
+              : html`<div class="mt-3 min-h-0 overflow-y-auto">
+                    <div class="flex flex-col gap-2">
+                      ${list.map((r) => {
+                        const b = badge[r.result] ?? badge.playing;
+                        return html`<div
+                          data-moworld-history-row
+                          class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:grid-cols-[6.5rem_9rem_1fr_auto] sm:items-center"
+                        >
+                          <span class="text-xs text-white/55 tabular-nums"
+                            >${fmtDate(r.startedAt)}</span
+                          >
+                          <span class="justify-self-end sm:justify-self-start"
+                            ><span
+                              class="inline-block rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${b[1]}"
+                              >${b[0]}</span
+                            ></span
+                          >
+                          <span class="truncate text-sm"
+                            >${mapDisplayName(r.map)} ·
+                            <span class="text-white/55"
+                              >${difficultyDisplayName(r.difficulty)}${
+                                r.resumed ? " · save" : ""
+                              }</span
+                            ></span
+                          >
+                          <span class="text-right text-sm tabular-nums"
+                            ><span class="text-white/55"
+                              >${fmtTime(r.seconds)}</span
+                            >
+                            ·
+                            <span class="font-bold text-amber-400"
+                              >${fmtPct(r.share)}</span
+                            >${
+                              r.bestShare > r.share + 0.5
+                                ? html`<span
+                                    class="block text-[11px] text-white/45"
+                                    >máx ${fmtPct(r.bestShare)}</span
+                                  >`
+                                : null
+                            }</span
+                          >
+                        </div>`;
+                      })}
+                    </div>
+                  </div>
+                  <div
+                    class="mt-3 flex items-center justify-between text-[11px] text-white/40"
+                  >
+                    <span>Tempo de jogo · território no fim da partida</span>
+                    <button
+                      type="button"
+                      class="rounded-lg px-2 py-1 hover:bg-white/10 hover:text-white"
+                      @click=${() => {
+                        if (confirm("Apagar o histórico de partidas?")) {
+                          clearMatchHistory();
+                          this.history = [];
+                        }
+                      }}
+                    >
+                      Limpar histórico
+                    </button>
+                  </div>`
+          }
+        </div>
+      </div>
+    `;
+  }
 
   /**
    * Refuses an API-DEPENDENT action (Create, Ranked, Join by code) and tells

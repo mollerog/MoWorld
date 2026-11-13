@@ -47,6 +47,7 @@ import { ReplayPanel } from "./layers/ReplayPanel";
 import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
 import { ControlBar } from "./layers/ControlBar";
+import { MatchHistoryRecorder } from "../MatchHistory";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TotalVictory } from "./layers/TotalVictory";
 import { TutorialPanel } from "./layers/TutorialPanel";
@@ -418,6 +419,7 @@ export function createRenderer(
     targetPopup,
     controlBar,
     totalVictory,
+    new MatchHistoryRecorder(game),
     onboardingOverlay,
     alertFrame,
     performanceOverlay,
