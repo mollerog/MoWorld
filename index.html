@@ -524,6 +524,12 @@
       /* O painel do jogador (topo) desce para não cobrir o contador. */
       body.in-game player-info-overlay .bg-gray-800\/92 {
         margin-top: 76px !important;
+        pointer-events: auto;
+      }
+      /* A margem acima do painel é área transparente do contêiner fixo:
+         sem isso ela engole os toques nos botões do topo (celular em pé). */
+      body.in-game player-info-overlay > div {
+        pointer-events: none;
       }
       /* Celular em pé: largura toda, abaixo dos botões do topo. */
       @media (max-width: 767px) and (orientation: portrait) {
