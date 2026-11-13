@@ -25,7 +25,7 @@ import type { RandomNameStyle } from "./PlayerName";
 
 export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
   return {
-    toggleView: "Space",
+    toggleView: "KeyV", // MoWorld: Espaço ficou para pausar
     preventStacking: "KeyH",
     coordinateGrid: "KeyM",
     performanceOverlay: "Shift+KeyD",
@@ -75,7 +75,7 @@ export function getDefaultKeybinds(isMac: boolean): Record<string, string> {
     shiftKey: "ShiftLeft",
     resetGfx: "KeyR",
     selectAllWarships: "KeyX",
-    pauseGame: "KeyP",
+    pauseGame: "Space", // MoWorld: Espaço pausa/despausa
     gameSpeedUp: "Period",
     gameSpeedDown: "Comma",
     altKey: "AltLeft",
