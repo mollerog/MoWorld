@@ -420,6 +420,21 @@
         margin: 8px;
         border-radius: 0.9rem !important;
       }
+      /* Alinhamento do topo: esquerda e direita com a mesma altura e o
+         mesmo afastamento (8px) do painel do meio. */
+      @media (min-width: 1024px) {
+        body.in-game game-left-sidebar .bg-gray-800\/92 {
+          position: relative;
+          top: 8px;
+          left: 8px;
+          margin: 0 !important;
+        }
+      }
+      body.in-game game-left-sidebar .bg-gray-800\/92,
+      body.in-game game-right-sidebar .bg-gray-800\/92 {
+        min-height: 44px;
+        justify-content: center;
+      }
       body.in-game player-info-overlay .bg-gray-800\/92 {
         margin-top: 8px;
         border-radius: 0.9rem !important;
