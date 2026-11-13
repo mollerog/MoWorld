@@ -19,33 +19,44 @@ export class GameStartingModal extends LitElement {
           isVisible ? "opacity-100 visible" : "opacity-0 invisible"
         }"
       ></div>
+      <!-- MoWorld: tela de carregamento no visual do app. O crédito ao
+           OpenFront e o aviso de licença ficam (exigidos pela AGPL-3.0). -->
       <div
-        class="fixed top-1/2 left-1/2 bg-zinc-900/90 backdrop-blur-md border border-white/10 p-6 rounded-2xl z-[9999] shadow-2xl text-white w-[400px] text-center transition-all duration-300 -translate-x-1/2 ${
+        class="fixed top-1/2 left-1/2 z-[9999] w-[min(360px,calc(100vw-2rem))] -translate-x-1/2 rounded-3xl border border-white/10 bg-slate-950/85 px-6 pt-7 pb-5 text-center text-white shadow-2xl backdrop-blur-md transition-all duration-300 ${
           isVisible
             ? "opacity-100 visible -translate-y-1/2"
             : "opacity-0 invisible -translate-y-[48%]"
         }"
       >
+        <div class="moworld-title" style="font-size:2.6rem">MOWORLD</div>
         <div
-          class="text-base font-medium tracking-wider uppercase text-white/40 mb-3"
+          class="mt-1 text-[10px] font-bold tracking-[0.4em] text-white/60"
         >
-          ${translateText("main.copyright")}
+          CONQUISTE O MUNDO REAL
         </div>
-        <a
-          href="https://github.com/openfrontio/OpenFrontIO/blob/main/CREDITS.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="block mb-4 text-lg font-medium tracking-wider uppercase text-malibu-blue no-underline transition-colors duration-200 hover:text-aquarius"
-          >${translateText("game_starting_modal.credits")}</a
-        >
-        <p class="text-base text-white/40 mb-4">
-          ${translateText("game_starting_modal.code_license")}
+        <div class="my-6 flex justify-center" aria-hidden="true">
+          <div
+            class="size-12 rounded-full border-4 border-white/10 border-t-amber-400 animate-spin"
+          ></div>
+        </div>
+        <p class="text-base font-bold tracking-wide text-white/90">
+          Preparando a partida…
         </p>
-        <p
-          class="text-xl font-medium tracking-wider text-white bg-white/5 border border-white/10 px-4 py-3 rounded-xl"
+        <div
+          class="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-white/40"
         >
-          ${translateText("game_starting_modal.title")}
-        </p>
+          <span>${translateText("main.copyright")}</span>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://github.com/mollerog/MoWorld/blob/main/CREDITS.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline-offset-2 hover:text-white hover:underline"
+            >${translateText("game_starting_modal.credits")}</a
+          >
+          <span aria-hidden="true">·</span>
+          <span>${translateText("game_starting_modal.code_license")}</span>
+        </div>
       </div>
     `;
   }
