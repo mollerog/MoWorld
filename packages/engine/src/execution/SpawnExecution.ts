@@ -23,6 +23,7 @@ import type {
   SnapshotWriter,
 } from "../snapshot/SnapshotContext";
 import { PlayerExecution } from "./PlayerExecution";
+import { SoloSpawnCountdownExecution } from "./SoloSpawnCountdownExecution";
 import { TribeExecution } from "./TribeExecution";
 import { getSpawnTiles } from "./Util";
 
@@ -121,9 +122,18 @@ export class SpawnExecution implements Execution {
       this.mg.config().gameConfig().gameType === GameType.Singleplayer &&
       this.playerInfo.playerType === PlayerType.Human
     ) {
-      // In singleplayer, spawn ends when player selects
-      // a spawn location.
-      this.mg.endSpawnPhase();
+      // MoWorld: no solo, a partida começa alguns segundos depois da
+      // primeira escolha; trocar de lugar nesse tempo não reinicia a contagem.
+      const counting = this.mg
+        .executions()
+        .some((e) => e instanceof SoloSpawnCountdownExecution);
+      if (!counting) {
+        this.mg.addExecution(
+          new SoloSpawnCountdownExecution(
+            this.mg.ticks() + this.mg.config().soloSpawnConfirmTurns(),
+          ),
+        );
+      }
     }
   }
 

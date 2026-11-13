@@ -33,6 +33,8 @@ export class ControlBar extends LitElement implements Controller {
     return 250;
   }
 
+  private firstSpawnTick: number | null = null;
+
   tick() {
     const me = this.game.myPlayer();
     if (me === null || !me.isAlive()) {
@@ -58,16 +60,18 @@ export class ControlBar extends LitElement implements Controller {
 
     // Posicionamento (fase inicial) e depois a proteção pós-nascimento.
     const ticks = this.game.ticks();
-    const spawnTurns = cfg.numSpawnPhaseTurns();
     let chip: Snapshot["chip"] = null;
     if (this.game.inSpawnPhase()) {
+      // Solo: a contagem começa na primeira escolha de lugar.
+      this.firstSpawnTick ??= ticks;
+      const end = this.firstSpawnTick + cfg.soloSpawnConfirmTurns();
       chip = {
         icon: "⏳",
-        label: "Posicione",
-        seconds: Math.max(0, (spawnTurns - ticks) / 10),
+        label: "Começa em",
+        seconds: Math.max(0, (end - ticks) / 10),
       };
     } else {
-      const left = spawnTurns + cfg.spawnImmunityDuration() - ticks;
+      const left = cfg.spawnImmunityDuration() - this.game.ticksSinceStart();
       if (left > 0) {
         chip = { icon: "🛡", label: "Proteção", seconds: left / 10 };
       }

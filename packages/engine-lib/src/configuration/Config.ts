@@ -322,6 +322,11 @@ export class Config {
   armyLimitWarningThreshold(): number {
     return 0.8;
   }
+  // MoWorld: no solo, depois de escolher onde nascer o jogador ainda tem
+  // este tempo (em ticks, 10/s) para trocar antes de a partida começar.
+  soloSpawnConfirmTurns(): number {
+    return 100;
+  }
   numSpawnPhaseTurns(): number {
     if (this._gameConfig.gameType === GameType.Singleplayer) {
       return 100;
