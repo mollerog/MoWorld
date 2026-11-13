@@ -16,7 +16,8 @@ import {
 import { MapRenderer } from "../render/gl";
 import { TransformHandler } from "../TransformHandler";
 import { MoveWarshipIntentEvent } from "../Transport";
-import { GameView, UnitView } from "../view";
+import { TapTargetEvent } from "../hud/layers/TargetPopup";
+import { GameView, PlayerView, UnitView } from "../view";
 
 const WARSHIP_SELECTION_RADIUS = 10;
 
@@ -230,7 +231,17 @@ export class WarshipSelectionController implements Controller {
       return;
     }
     if (!this.game.isWater(clickRef)) {
-      this.eventBus.emit(new ContextMenuEvent(event.x, event.y));
+      // MoWorld: toque rápido em terra alheia abre o pop-up de alvo; no
+      // próprio território (construir) segue o menu circular.
+      const owner = this.game.owner(clickRef);
+      const me = this.game.myPlayer();
+      const mine =
+        me !== null && owner.isPlayer() && (owner as PlayerView).id() === me.id();
+      this.eventBus.emit(
+        mine
+          ? new ContextMenuEvent(event.x, event.y)
+          : new TapTargetEvent(event.x, event.y),
+      );
       return;
     }
     if (this.selectedUnit || this.multiSelectedWarships.length > 0) {

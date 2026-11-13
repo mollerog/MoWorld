@@ -132,7 +132,7 @@ export class RadialMenu implements Controller {
   private backButtonHoverTimeout: number | null = null;
   private navigationInProgress: boolean = false;
   private originalCenterButtonIcon: string = "";
-  private readonly defaultCenterButtonColor = "#0f2744";
+  private readonly defaultCenterButtonColor = "#0f172a"; // MoWorld
   private centerButtonColor: string;
   private centerButtonIconSize: number;
 
@@ -274,6 +274,9 @@ export class RadialMenu implements Controller {
       .attr("class", "center-button-visible")
       .attr("r", this.config.centerButtonSize)
       .attr("fill", this.centerButtonColor)
+      // MoWorld: anel laranja no botão central (ação principal).
+      .attr("stroke", "#f59e0b")
+      .attr("stroke-width", 3)
       .style("pointer-events", "none");
 
     centerButton
@@ -292,10 +295,11 @@ export class RadialMenu implements Controller {
     this.tooltipElement.className = "radial-tooltip";
     this.tooltipElement.style.position = "absolute";
     this.tooltipElement.style.pointerEvents = "none";
-    this.tooltipElement.style.background = "rgba(12, 35, 64, 0.88)";
+    this.tooltipElement.style.background = "rgba(15, 23, 42, 0.92)"; // MoWorld
+    this.tooltipElement.style.border = "1px solid rgba(255, 255, 255, 0.1)";
     this.tooltipElement.style.color = "white";
     this.tooltipElement.style.padding = "6px 10px";
-    this.tooltipElement.style.borderRadius = "6px";
+    this.tooltipElement.style.borderRadius = "10px";
     this.tooltipElement.style.fontSize = "12px";
     this.tooltipElement.style.zIndex = "10000";
     this.tooltipElement.style.maxWidth = "250px";
@@ -407,7 +411,9 @@ export class RadialMenu implements Controller {
 
         return d3.color(color)?.copy({ opacity: opacity })?.toString() ?? color;
       })
-      .attr("stroke", "none")
+      // MoWorld: divisão fina e clara entre as fatias, como os painéis.
+      .attr("stroke", "rgba(15, 23, 42, 0.9)")
+      .attr("stroke-width", 3)
       .style("cursor", (d) =>
         this.params === null || d.data.disabled(this.params)
           ? "not-allowed"

@@ -403,7 +403,8 @@ export class InputHandler {
   private longPressActive: boolean = false;
   private suppressNextTap: boolean = false;
   private touchPlacementDragState: "idle" | "candidate" | "active" = "idle";
-  private readonly LONG_PRESS_MS = 800;
+  // MoWorld: segurar abre o menu circular, então um tempo menor.
+  private readonly LONG_PRESS_MS = 450;
 
   private moveInterval: NodeJS.Timeout | null = null;
   /** Aborts every window/canvas listener added in
@@ -1195,6 +1196,12 @@ export class InputHandler {
           this.longPressTimer = null;
           this.longPressActive = true;
           this.canvas.style.cursor = "crosshair";
+          // MoWorld: vibração curta avisando que o "segurar" pegou.
+          try {
+            navigator.vibrate?.(15);
+          } catch {
+            // sem suporte a vibração
+          }
           this.eventBus.emit(
             new TouchLongPressStartEvent(
               this.lastPointerDownX,
@@ -1343,10 +1350,18 @@ export class InputHandler {
     }
     if (wasLongPress) {
       this.canvas.style.cursor = "";
-      // If long-press fired but no drag happened (selectionBoxActive is false),
-      // suppress the tap so we don't emit a spurious TouchEvent
+      // MoWorld: segurar sem arrastar abre o menu circular (o toque rápido
+      // abre o pop-up de alvo). Arrastar depois de segurar continua sendo a
+      // caixa de seleção de navios.
       if (!this.selectionBoxActive) {
-        this.suppressNextTap = true;
+        this.suppressNextTap = false;
+        if (this.uiState.ghostStructure === null) {
+          this.eventBus.emit(
+            new ContextMenuEvent(this.lastPointerDownX, this.lastPointerDownY),
+          );
+        }
+        event.preventDefault();
+        return;
       }
     }
 

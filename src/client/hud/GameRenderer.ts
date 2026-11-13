@@ -46,6 +46,7 @@ import { PlayerPanel } from "./layers/PlayerPanel";
 import { ReplayPanel } from "./layers/ReplayPanel";
 import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
+import { TargetPopup } from "./layers/TargetPopup";
 import { TutorialPanel } from "./layers/TutorialPanel";
 import { UnitDisplay } from "./layers/UnitDisplay";
 import { WinModal } from "./layers/WinModal";
@@ -311,6 +312,18 @@ export function createRenderer(
   }
   inGamePromo.game = game;
 
+  // MoWorld: pop-up de alvo no toque rápido (celular).
+  const targetPopup = document.querySelector(
+    "moworld-target-popup",
+  ) as TargetPopup;
+  if (!(targetPopup instanceof TargetPopup)) {
+    console.error("target popup not found");
+  }
+  targetPopup.game = game;
+  targetPopup.eventBus = eventBus;
+  targetPopup.transform = transformHandler;
+  targetPopup.uiState = uiState;
+
   const tutorialPanel = document.querySelector(
     "tutorial-panel",
   ) as TutorialPanel;
@@ -381,6 +394,7 @@ export function createRenderer(
     multiTabModal,
     inGamePromo,
     tutorialPanel,
+    targetPopup,
     onboardingOverlay,
     alertFrame,
     performanceOverlay,

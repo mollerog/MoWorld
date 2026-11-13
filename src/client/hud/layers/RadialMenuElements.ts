@@ -92,18 +92,19 @@ export interface CenterButtonElement {
   action: (params: MenuElementParams) => void;
 }
 
+// MoWorld: paleta do app (laranja = ação principal, azul-marinho = base).
 export const COLORS = {
-  build: "#e6c74a",
-  building: "#1e3a5f",
-  boat: "#2a82c9",
-  disabled: "#94a3b8",
-  ally: "#4ade80",
+  build: "#8b5cf6",
+  building: "#1e293b",
+  boat: "#0ea5e9",
+  disabled: "#64748b",
+  ally: "#22c55e",
   breakAlly: "#dc2626",
   breakAllyNoDebuff: "#d97706",
   delete: "#ef4444",
-  info: "#475569",
+  info: "#334155",
   target: "#ef4444",
-  attack: "#ef4444",
+  attack: "#f59e0b",
   infoDetails: "#7f8c8d",
   infoEmoji: "#fbbf24",
   trade: "#0891b2",
