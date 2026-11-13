@@ -1,4 +1,3 @@
-import { assetUrl } from "@openfront/shared/AssetUrls";
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import "./CosmeticBackground";
@@ -18,7 +17,7 @@ export class PlayPage extends LitElement {
     return html`
       <div
         id="page-play"
-        class="flex flex-col gap-2 w-full px-0 lg:px-4 min-h-0"
+        class="flex flex-col gap-2 w-full max-w-3xl mx-auto px-0 lg:px-4 min-h-0"
       >
         <token-login class="absolute"></token-login>
         <rewards-modal class="absolute"></rewards-modal>
@@ -58,11 +57,7 @@ export class PlayPage extends LitElement {
             <div
               class="col-start-2 flex items-center justify-center text-malibu-blue min-w-0"
             >
-              <img
-                src=${assetUrl("images/OpenFrontLogo.svg")}
-                alt="OpenFront"
-                class="h-full w-auto"
-              />
+              <!-- MoWorld: o título grande já está logo abaixo. -->
             </div>
 
             <!-- Right slot: bell, help, settings and the profile control. The menu is
@@ -77,6 +72,24 @@ export class PlayPage extends LitElement {
           </div>
         </div>
 
+        <!-- MoWorld: título -->
+        <div
+          class="lg:hidden h-[calc(env(safe-area-inset-top)+56px)]"
+        ></div>
+        <div
+          class="flex flex-col items-center text-center pt-6 pb-4 sm:pt-12 sm:pb-8 select-none"
+        >
+          <h1 class="moworld-title">MOWORLD</h1>
+          <div class="flex items-center gap-3 mt-1 sm:mt-2">
+            <span class="h-px w-8 sm:w-16 bg-amber-300/60"></span>
+            <span
+              class="text-[10px] sm:text-sm font-bold tracking-[0.4em] text-white/80"
+              >CONQUISTE O MUNDO REAL</span
+            >
+            <span class="h-px w-8 sm:w-16 bg-amber-300/60"></span>
+          </div>
+        </div>
+
         <!-- Top strip: news + identity on the left, Streaming Now on the right. The 2fr/1fr
              split only exists while the panel is live (.streaming-live via has-[]) —
              otherwise the left column takes the full row. -->
@@ -84,14 +97,11 @@ export class PlayPage extends LitElement {
           class="group/strip w-full pb-4 lg:pb-0 sm:compact:pb-0 flex flex-col gap-4 sm:-mx-4 sm:w-[calc(100%+2rem)] lg:mx-0 lg:w-full lg:grid lg:grid-cols-1 lg:has-[.streaming-live]:grid-cols-[2fr_1fr] lg:gap-4 lg:items-stretch"
         >
           <!-- Mobile: spacer for fixed top bar -->
-          <div
-            class="lg:hidden h-[calc(env(safe-area-inset-top)+56px)] -mb-4"
-          ></div>
 
           <!-- Left column: news banner + identity row, stacked tight. -->
           <div class="flex flex-col gap-2 min-w-0">
             <!-- Off on compact screens (see styles.css), like Streaming Now. -->
-            <news-box class="compact:hidden"></news-box>
+            <!-- MoWorld: sem notícias do OpenFront -->
 
             <!-- Identity row: username over the currently selected cosmetic background. -->
             <div

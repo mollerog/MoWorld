@@ -404,7 +404,7 @@ export class SinglePlayerModal extends BaseModal {
                     >${translateText("single_modal.toggle_achievements")}</span
                   >
                 </button>`
-              : this.renderNotLoggedInBanner()
+              : null /* MoWorld: sem login para conquistas */
           }
         </div>
         ${signedIn && this.showAchievements ? this.renderMedalOverview() : null}`,

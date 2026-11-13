@@ -403,6 +403,19 @@
         }
         .moworld-bar .mw-unit-cost { display: inline !important; }
       }
+      /* MoWorld: título da tela inicial */
+      .moworld-title {
+        font-family: "Arial Black", "Segoe UI Black", "Inter", system-ui, sans-serif;
+        font-weight: 900;
+        font-size: clamp(3.2rem, 13vw, 7rem);
+        line-height: 0.95;
+        letter-spacing: 0.04em;
+        background: linear-gradient(180deg, #fffaf0 0%, #ffe2bd 55%, #ffb877 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 5px 0 rgb(0 0 0 / 0.45)) drop-shadow(0 12px 18px rgb(0 0 0 / 0.35));
+      }
       /* MoWorld: sem o logo/versão do OpenFront e sem o item "Jogar" (única página). */
       img[src*="OpenFrontLogo"], #game-version,
       desktop-nav-bar nav > div:has(#game-version),
@@ -433,7 +446,9 @@
             if (!toast) {
               toast = document.createElement("div");
               toast.style.cssText =
-                "position:fixed;left:12px;bottom:12px;z-index:2147483647;" +
+                "position:fixed;left:12px;z-index:2147483647;" +
+                // No celular fica no alto (o rodapé ocupa o canto de baixo).
+                (window.innerWidth < 640 ? "top:calc(env(safe-area-inset-top) + 64px);" : "bottom:12px;") +
                 "background:rgba(15,23,42,.88);color:rgba(255,255,255,.88);" +
                 "font:600 11px system-ui,sans-serif;padding:5px 10px;border-radius:999px;" +
                 "border:1px solid rgba(255,255,255,.12)";

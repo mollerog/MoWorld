@@ -144,11 +144,9 @@ export class TutorialPanel extends LitElement implements Controller {
       // The steps walk a new game from its spawn; a resumed save is well
       // past that, and would hold the spawn ring up until the next attack.
       // The onboarding tutorial has its own guide (OnboardingOverlay).
-      this.setActive(
-        !this.userSettings.tutorialDismissed() &&
-          !this.game.resumedFromSave() &&
-          this.game.config().gameConfig().tutorial !== true,
-      );
+      // MoWorld: o guia só aparece pelo botão Tutorial (modo próprio, com o
+      // OnboardingOverlay). Nas partidas Solo ele fica desligado.
+      this.setActive(false);
     }
     if (!this.active) return;
 

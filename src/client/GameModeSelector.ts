@@ -40,6 +40,7 @@ import {
   retryServerList,
   type BackendReachabilityDetail,
 } from "./ServerList";
+import { listSavedGames } from "./SavedGamesApi";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import { lastUserMeResponse } from "./UserMeBroadcast";
 import { UsernameInput } from "./UsernameInput";
@@ -298,6 +299,8 @@ export function shouldBlockJoin(
 export class GameModeSelector extends LitElement {
   @state() private lobbies: PublicGames | null = null;
   @state() private inputValid: boolean = true;
+  /** MoWorld: quantos jogos salvos existem no aparelho (null = carregando). */
+  @state() private saveCount: number | null = null;
   @state() private desktopUpdateState: DesktopUpdateState | null = null;
   @state() private viewerTrusted: boolean = false;
   @state() private viewerSignedIn: boolean = false;
@@ -393,6 +396,9 @@ export class GameModeSelector extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    void listSavedGames().then((saves) => {
+      this.saveCount = saves === false ? 0 : saves.length;
+    });
     this.defaultLobbyTime = ClientEnv.gameCreationRate() / 1000;
     window.addEventListener(
       "username-validity-change",
@@ -647,26 +653,77 @@ export class GameModeSelector extends LitElement {
   }
 
   render() {
-    // OFFLINE: só Solo e Tutorial.
+    // MoWorld: tela inicial — Jogar Solo em destaque, Continuar e Tutorial.
+    const disabled = !this.inputValid;
+    const saves = this.saveCount;
+    const savesLabel =
+      saves === null
+        ? "…"
+        : saves === 0
+          ? "Nenhum jogo salvo"
+          : saves === 1
+            ? "1 jogo salvo"
+            : `${saves} jogos salvos`;
+    const card =
+      "group flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 text-left transition-all hover:bg-slate-800/90 hover:border-white/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+    const iconBox =
+      "flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl";
     return html`
-      <div class="flex flex-col gap-4 w-full px-4 pb-4 mx-auto sm:px-0 sm:pb-0">
-        <div class="h-20">
-          ${this.renderSmallActionCard(
-            translateText("main.solo"),
-            this.openSinglePlayerModal,
-            PRIMARY_ACTION,
-          )}
-        </div>
-        <div class="h-14">
-          ${this.renderSmallActionCard(
-            translateText("main.tutorial"),
-            this.startTutorial,
-            TUTORIAL_ACTION,
-          )}
+      <div class="flex flex-col gap-3 w-full px-4 pb-6 sm:px-0">
+        <button
+          type="button"
+          data-moworld-play
+          ?disabled=${disabled}
+          @click=${this.openSinglePlayerModal}
+          class="relative flex items-center justify-center gap-3 h-20 sm:h-24 rounded-2xl bg-amber-400 text-slate-900 shadow-[0_6px_0_#b45309] transition-all hover:bg-amber-300 active:translate-y-1 active:shadow-[0_2px_0_#b45309] disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <svg class="size-7 sm:size-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z" />
+          </svg>
+          <span class="text-2xl sm:text-3xl font-black tracking-[0.18em]">JOGAR SOLO</span>
+        </button>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            data-moworld-continue
+            ?disabled=${disabled}
+            @click=${this.openSavedGames}
+            class=${card}
+          >
+            <span class="${iconBox} bg-sky-500/15 text-sky-300">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <path d="M17 21v-8H7v8M7 3v5h8" />
+              </svg>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm sm:text-base font-black tracking-wider text-white">CONTINUAR</span>
+              <span class="block text-xs text-white/55 leading-tight">${savesLabel}</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            data-moworld-tutorial
+            ?disabled=${disabled}
+            @click=${this.startTutorial}
+            class=${card}
+          >
+            <span class="${iconBox} bg-emerald-500/15 text-emerald-300">
+              <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 10 12 5 2 10l10 5 10-5z" />
+                <path d="M6 12v5c3 2 9 2 12 0v-5" />
+              </svg>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm sm:text-base font-black tracking-wider text-white">TUTORIAL</span>
+              <span class="block text-xs text-white/55 leading-tight">Aprenda o básico</span>
+            </span>
+          </button>
         </div>
       </div>
     `;
   }
+
 
   /**
    * Refuses an API-DEPENDENT action (Create, Ranked, Join by code) and tells
@@ -733,6 +790,29 @@ export class GameModeSelector extends LitElement {
         document.querySelector("single-player-modal") as SinglePlayerModal
       )?.open(),
     );
+  };
+
+  // MoWorld: abre o Solo com a lista de jogos salvos já expandida.
+  private openSavedGames = () => {
+    if (!this.validateUsername()) return;
+    whenModalLoaded("single-player-modal", () => {
+      (
+        document.querySelector("single-player-modal") as SinglePlayerModal
+      )?.open();
+      let tries = 0;
+      const expand = () => {
+        const toggle = document.querySelector<HTMLButtonElement>(
+          "single-player-modal [data-saved-games-toggle]",
+        );
+        if (toggle) {
+          if (toggle.getAttribute("aria-expanded") !== "true") toggle.click();
+          toggle.scrollIntoView({ block: "start" });
+        } else if (++tries < 40) {
+          setTimeout(expand, 50);
+        }
+      };
+      expand();
+    });
   };
 
   // Handled in Main, which also serves the help page's tutorial button.
