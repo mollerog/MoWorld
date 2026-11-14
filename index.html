@@ -582,6 +582,27 @@
           top: var(--mw-top-clear) !important;
         }
       }
+      /* PC: barra de controle com a mesma largura do cartão de informações
+         do inimigo; empilhados (barra, cartão) e o aviso de pausa abaixo. */
+      @media (min-width: 1024px) {
+        moworld-control-bar {
+          width: 500px;
+        }
+        body.in-game player-info-overlay .bg-gray-800\/92 {
+          margin-top: 84px !important;
+        }
+        body.in-game .mw-headsup {
+          top: 84px !important;
+        }
+        body.in-game:has(player-info-overlay .bg-gray-800\/92.visible) .mw-headsup {
+          top: 164px !important;
+        }
+      }
+      @media (min-width: 1200px) and (pointer: fine) {
+        moworld-control-bar {
+          width: 598px;
+        }
+      }
       /* Celular deitado: mais compacto no meio. */
       @media (max-width: 1023px) and (orientation: landscape) {
         moworld-control-bar {
