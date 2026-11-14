@@ -30,30 +30,36 @@ export class PlayPage extends LitElement {
           <div
             class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center h-14 px-2 gap-2"
           >
-            <button
-              id="hamburger-btn"
-              class="col-start-1 justify-self-start h-10 shrink-0 aspect-[4/3] flex text-white/90 rounded-md items-center justify-center transition-colors"
-              data-i18n-aria-label="main.menu"
-              aria-expanded="false"
-              aria-controls="sidebar-menu"
-              aria-haspopup="dialog"
-              data-i18n-title="main.menu"
+            <div
+              class="col-start-1 justify-self-start flex items-center gap-1 min-w-0"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.5"
-                stroke="currentColor"
-                class="size-8"
+              <button
+                id="hamburger-btn"
+                class="justify-self-start h-10 shrink-0 aspect-[4/3] flex text-white/90 rounded-md items-center justify-center transition-colors"
+                data-i18n-aria-label="main.menu"
+                aria-expanded="false"
+                aria-controls="sidebar-menu"
+                aria-haspopup="dialog"
+                data-i18n-title="main.menu"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="size-8"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  />
+                </svg>
+              </button>
+              <!-- MoWorld: conta Google (canto esquerdo da barra). -->
+              <moworld-account-button compact></moworld-account-button>
+            </div>
 
             <div
               class="col-start-2 flex items-center justify-center text-malibu-blue min-w-0"
@@ -74,9 +80,7 @@ export class PlayPage extends LitElement {
         </div>
 
         <!-- MoWorld: título -->
-        <div
-          class="lg:hidden h-[calc(env(safe-area-inset-top)+56px)]"
-        ></div>
+        <div class="lg:hidden h-[calc(env(safe-area-inset-top)+56px)]"></div>
         <div
           class="flex flex-col items-center text-center pt-6 pb-4 sm:pt-12 sm:pb-8 select-none"
         >
@@ -88,9 +92,6 @@ export class PlayPage extends LitElement {
               >CONQUISTE O MUNDO REAL</span
             >
             <span class="h-px w-8 sm:w-16 bg-amber-300/60"></span>
-          </div>
-          <div class="mt-4">
-            <moworld-account-button></moworld-account-button>
           </div>
         </div>
 

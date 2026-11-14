@@ -54,8 +54,10 @@ export class DesktopNavBar extends LitElement {
     // not the sticky host, so the host's offset below a header ad stays exact.
     return html`
       <nav
-        class="hidden lg:flex w-full bg-zinc-900/90 backdrop-blur-md items-center justify-center gap-8 py-4 shrink-0 z-50 relative compact:[zoom:0.75]"
+        class="hidden lg:flex w-full bg-zinc-900/90 backdrop-blur-md items-center justify-between gap-8 px-5 py-3 shrink-0 z-50 relative compact:[zoom:0.75]"
       >
+        <!-- MoWorld: conta Google no canto esquerdo, ícones no direito. -->
+        <moworld-account-button compact></moworld-account-button>
         <div class="flex flex-col items-center justify-center">
           <div class="h-8">
             <img
@@ -120,7 +122,7 @@ export class DesktopNavBar extends LitElement {
              account/notification/utility affordances rather than page links,
              so they sit tight together behind a divider instead of in the nav
              item list. -->
-        <div class="flex items-center gap-1 pl-5 ml-1 border-l border-white/10">
+        <div class="flex items-center gap-1">
           <nav-utility-icons size="desktop"></nav-utility-icons>
           <nav-account-menu variant="desktop"></nav-account-menu>
         </div>
