@@ -245,6 +245,11 @@ export class LangSelector extends LitElement {
   }
 
   private applyTranslation() {
+    // MoWorld: o <html lang> acompanha o idioma do jogo. Com "en" fixo e o
+    // texto em português, o Chrome oferecia traduzir a página toda vez.
+    if (this.currentLang && this.currentLang !== "debug") {
+      document.documentElement.lang = this.currentLang;
+    }
     const components = [
       "banned-modal",
       "single-player-modal",
