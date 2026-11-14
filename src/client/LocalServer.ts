@@ -19,6 +19,10 @@ import {
   ServerMessage,
   ServerStartGameMessage,
 } from "@openfront/shared/WireSchemas";
+import {
+  decodeClientMessage,
+  encodeServerMessage,
+} from "@openfront/shared/ZbinWire";
 import { ClientEnv } from "src/client/ClientEnv";
 import { z } from "zod";
 import { getApiBase } from "./Api";
@@ -29,6 +33,7 @@ import {
   GameSpeedUpIntentEvent,
   ReplaySpeedChangeEvent,
 } from "./InputHandler";
+import { emitPauseVote, emitPeerLost } from "./peer/PeerSession";
 import { startSingleplayerHeartbeat } from "./SingleplayerHeartbeat";
 import {
   defaultReplaySpeedMultiplier,
@@ -73,6 +78,12 @@ export class LocalServer {
   private stopHeartbeat: (() => void) | null = null;
   private clientConnect: () => void;
   private clientMessage: (message: ServerMessage) => void;
+
+  // MoWorld: jogando junto — votação de pausa pendente (quem pediu).
+  private vote: { from: ClientID; paused: boolean } | null = null;
+  // O convidado só recebe turnos depois de entrar (os anteriores vão no
+  // "start" que ele recebe ao entrar).
+  private guestJoined = false;
 
   constructor(
     private lobbyConfig: LobbyConfig,
@@ -157,6 +168,7 @@ export class LocalServer {
       // Don't send myClientID for replays — viewer has no player identity.
       myClientID: this.lobbyConfig.gameRecord ? undefined : this.clientID,
     } satisfies ServerStartGameMessage);
+    this.wirePeerGuest();
     // A resumed game opens paused, so the player can get their bearings. The
     // pause turn is also the tick that brings the view up to the save.
     if (this.lobbyConfig.snapshot !== undefined) {
@@ -192,6 +204,10 @@ export class LocalServer {
         ...clientMsg.intent,
         clientID: this.clientID!,
       };
+      if (stampedIntent.type === "toggle_pause" && this.peerHost()) {
+        this.requestPause(this.clientID!, stampedIntent.paused);
+        return;
+      }
       if (stampedIntent.type === "toggle_pause") {
         if (stampedIntent.paused) {
           // Pausing: add intent and end turn before pause takes effect
@@ -262,6 +278,130 @@ export class LocalServer {
     }
   }
 
+  // ------------------------------------------------ MoWorld: jogando junto
+
+  private peerHost() {
+    const p = this.lobbyConfig.peer;
+    return p && p.role === "host" && p.guestClientID ? p : null;
+  }
+
+  private sendToGuest(msg: ServerMessage) {
+    const p = this.peerHost();
+    if (!p) return;
+    if (msg.type === "turn" && !this.guestJoined) return;
+    p.link.sendBinary(encodeServerMessage(msg, undefined));
+  }
+
+  private wirePeerGuest() {
+    const p = this.peerHost();
+    if (!p) return;
+    p.link.onClose(() => emitPeerLost());
+    const guestID = p.guestClientID!;
+    p.answerVote = (accept) => this.answerVote(this.clientID!, accept);
+    p.link.onJson((m) => {
+      if (m.k === "pause-answer") this.answerVote(guestID, m.accept === true);
+    });
+    p.link.onBinary((bytes) => {
+      let msg: ClientMessage;
+      try {
+        msg = decodeClientMessage(bytes, undefined);
+      } catch (e) {
+        console.warn("peer: mensagem inválida do convidado", e);
+        return;
+      }
+      this.onGuestMessage(guestID, msg);
+    });
+  }
+
+  private onGuestMessage(guestID: ClientID, msg: ClientMessage) {
+    if (msg.type === "join" || msg.type === "rejoin") {
+      this.guestJoined = true;
+      this.sendToGuest({
+        type: "start",
+        gameStartInfo: this.lobbyConfig.gameStartInfo!,
+        turns: this.turns,
+        lobbyCreatedAt: this.lobbyConfig.gameStartInfo!.lobbyCreatedAt,
+        myClientID: guestID,
+      } satisfies ServerStartGameMessage);
+      return;
+    }
+    if (msg.type === "intent") {
+      const stamped = { ...msg.intent, clientID: guestID } as StampedIntent;
+      if (stamped.type === "toggle_pause") {
+        this.requestPause(guestID, stamped.paused);
+        return;
+      }
+      if (this.paused) return;
+      this.intents.push(stamped);
+      return;
+    }
+    if (msg.type === "hash") {
+      const mine = this.turns[msg.turnNumber]?.hash;
+      if (mine !== undefined && mine !== null && mine !== msg.hash) {
+        console.error(
+          `peer: dessincronizou no turno ${msg.turnNumber} (anfitrião ${mine}, convidado ${msg.hash})`,
+        );
+      }
+    }
+  }
+
+  /** Pedido de pausa/despausa: só vale quando o outro jogador aceita. */
+  private requestPause(from: ClientID, paused: boolean) {
+    const p = this.peerHost();
+    if (!p) return;
+    if (this.vote !== null || paused === this.paused) return;
+    this.vote = { from, paused };
+    const hostAsked = from === this.clientID;
+    const hostName = this.lobbyConfig.playerName;
+    emitPauseVote(
+      hostAsked
+        ? { state: "waiting", paused }
+        : { state: "ask", paused, from: p.partnerName },
+    );
+    p.link.sendJson({
+      k: "pause-vote",
+      v: hostAsked
+        ? { state: "ask", paused, from: hostName }
+        : { state: "waiting", paused },
+    });
+  }
+
+  private answerVote(answerer: ClientID, accept: boolean) {
+    const p = this.peerHost();
+    const vote = this.vote;
+    if (!p || vote === null || answerer === vote.from) return;
+    this.vote = null;
+    if (accept) {
+      const intent = {
+        type: "toggle_pause",
+        paused: vote.paused,
+        clientID: vote.from,
+      } as StampedIntent;
+      if (vote.paused) {
+        this.intents.push(intent);
+        this.endTurn();
+        this.paused = true;
+      } else {
+        this.paused = false;
+        this.intents.push(intent);
+        this.endTurn();
+      }
+      emitPauseVote({ state: "accepted", paused: vote.paused });
+      p.link.sendJson({
+        k: "pause-vote",
+        v: { state: "accepted", paused: vote.paused },
+      });
+      return;
+    }
+    const by =
+      answerer === this.clientID ? this.lobbyConfig.playerName : p.partnerName;
+    emitPauseVote({ state: "refused", paused: vote.paused, by });
+    p.link.sendJson({
+      k: "pause-vote",
+      v: { state: "refused", paused: vote.paused, by },
+    });
+  }
+
   // This is so the client can tell us when it finished processing the turn.
   public turnComplete() {
     this.turnsExecuted++;
@@ -290,10 +430,12 @@ export class LocalServer {
       type: "turn",
       turn: pastTurn,
     });
+    this.sendToGuest({ type: "turn", turn: pastTurn });
   }
 
   public endGame() {
     console.log("local server ending game");
+    this.lobbyConfig.peer?.link.close();
     clearInterval(this.turnCheckInterval);
     this.stopHeartbeat?.();
     this.stopHeartbeat = null;

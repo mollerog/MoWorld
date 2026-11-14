@@ -1,3 +1,4 @@
+import { SpawnClock } from "../SpawnClock";
 import {
   GameMode,
   GameType,
@@ -141,7 +142,7 @@ export class HeadsUpMessage extends LitElement implements Controller {
     this.toastDragOffset = { x: 0, y: 0 };
   };
 
-  private soloSpawnTick: number | null = null;
+  private spawnClock = new SpawnClock();
 
   init() {
     this.isVisible = true;
@@ -202,27 +203,22 @@ export class HeadsUpMessage extends LitElement implements Controller {
   }
 
   private getMessage(): string {
-    // MoWorld: solo, lugar escolhido — mostra a contagem para começar.
+    // MoWorld: contagem da fase de posicionamento (solo e jogando junto).
     if (
       !this.isPaused &&
       this.game.inSpawnPhase() &&
-      this.game.config().gameConfig().gameType === GameType.Singleplayer &&
-      this.game.myPlayer()?.isAlive()
+      this.game.config().gameConfig().gameType === GameType.Singleplayer
     ) {
-      this.soloSpawnTick ??= this.game.ticks();
-      const left = Math.max(
-        0,
-        Math.ceil(
-          (this.soloSpawnTick +
-            this.game.config().soloSpawnConfirmTurns() -
-            this.game.ticks()) /
-            10,
-        ),
-      );
-      const verb = window.matchMedia?.("(pointer: coarse)").matches
-        ? "toque"
-        : "clique";
-      return `Começando em ${left}s · ${verb} em outro lugar para trocar`;
+      const left = this.spawnClock.secondsLeft(this.game);
+      if (left !== null) {
+        const verb = window.matchMedia?.("(pointer: coarse)").matches
+          ? "toque"
+          : "clique";
+        if (!this.game.myPlayer()?.hasSpawned()) {
+          return `Escolha onde nascer · ${left}s`;
+        }
+        return `Começando em ${left}s · ${verb} em outro lugar para trocar`;
+      }
     }
     if (this.isCatchingUp) {
       return translateText("heads_up_message.catching_up");

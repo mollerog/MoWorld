@@ -1,3 +1,5 @@
+import "./components/CoopOverlay";
+import type { PeerSession } from "./peer/PeerSession";
 import { GAME_ID_REGEX } from "@openfront/engine-api/Schemas";
 import {
   isRewardClaimable,
@@ -296,6 +298,8 @@ export interface JoinLobbyEvent {
   spectator?: boolean;
   // Host only: the play token the lobby was created under (see createLobby).
   creatorToken?: string;
+  // MoWorld: jogando junto por ligação direta.
+  peer?: PeerSession;
 }
 
 /**
@@ -1986,6 +1990,7 @@ class Client {
       snapshot: lobby.snapshot,
       spectator: lobby.spectator,
       creatorToken: lobby.creatorToken,
+      peer: lobby.peer,
     });
 
     if (this.mostRecentJoinEvent !== event.timeStamp) {

@@ -1,3 +1,8 @@
+import {
+  emitPauseVote,
+  emitPeerLost,
+  type PauseVoteState,
+} from "./peer/PeerSession";
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import {
   AllPlayers,
@@ -275,6 +280,7 @@ export class Transport {
   // Consecutive retries that have not yet produced a server frame.
   private reconnectAttempts = 0;
   public readonly isLocal: boolean;
+  public readonly isPeerGuest: boolean;
   // Latched by a terminal close (a rejection the server will repeat), by
   // exhausting the reconnect budget, and by leaving the game. Blocks
   // scheduleReconnect and connectRemote so nothing reopens the socket.
@@ -302,9 +308,14 @@ export class Transport {
   ) {
     // If gameRecord is not null, we are replaying an archived game.
     // For multiplayer games, GameConfig is not known until game starts.
+    // MoWorld: o convidado de uma partida "jogando junto" não roda servidor:
+    // fala com o do anfitrião pela ligação direta.
+    this.isPeerGuest = this.lobbyConfig.peer?.role === "guest";
     this.isLocal =
-      this.lobbyConfig.gameRecord !== undefined ||
-      this.lobbyConfig.gameStartInfo?.config.gameType === GameType.Singleplayer;
+      !this.isPeerGuest &&
+      (this.lobbyConfig.gameRecord !== undefined ||
+        this.lobbyConfig.gameStartInfo?.config.gameType ===
+          GameType.Singleplayer);
 
     this.subscribe(SendAllianceRequestIntentEvent, (e) =>
       this.onSendAllianceRequest(e),
@@ -419,6 +430,8 @@ export class Transport {
   ) {
     if (this.isLocal) {
       this.connectLocal(onconnect, onmessage);
+    } else if (this.isPeerGuest) {
+      this.connectPeerGuest(onconnect, onmessage);
     } else {
       this.connectRemote(onconnect, onmessage);
     }
@@ -428,6 +441,11 @@ export class Transport {
     onconnect: () => void,
     onmessage: (message: ServerMessage) => void,
   ) {
+    if (this.isPeerGuest) {
+      this.onconnect = onconnect;
+      this.onmessage = onmessage;
+      return;
+    }
     if (this.isLocal) {
       this.localServer.updateCallback(onconnect, onmessage);
     } else {
@@ -447,6 +465,33 @@ export class Transport {
     );
     this.localServer.updateCallback(onconnect, onmessage);
     this.localServer.start();
+  }
+
+  // MoWorld: convidado — as mensagens do "servidor" chegam do anfitrião.
+  private peerUnsubs: Array<() => void> = [];
+  private connectPeerGuest(
+    onconnect: () => void,
+    onmessage: (message: ServerMessage) => void,
+  ) {
+    const peer = this.lobbyConfig.peer!;
+    this.onconnect = onconnect;
+    this.onmessage = onmessage;
+    for (const u of this.peerUnsubs.splice(0)) u();
+    this.peerUnsubs.push(
+      peer.link.onBinary((bytes) => {
+        try {
+          this.onmessage(decodeServerMessage(bytes, undefined));
+        } catch (e) {
+          console.warn("peer: mensagem inválida do anfitrião", e);
+        }
+      }),
+      peer.link.onJson((m) => {
+        if (m.k === "pause-vote") emitPauseVote(m.v as PauseVoteState);
+      }),
+      peer.link.onClose(() => emitPeerLost()),
+    );
+    this.isSessionReady = true;
+    onconnect();
   }
 
   private connectRemote(
@@ -657,6 +702,7 @@ export class Transport {
   // one attempt is scheduled at a time, on the backoff schedule, until the
   // budget runs out.
   public reconnect() {
+    if (this.isPeerGuest) return;
     if (this.isLocal) {
       this.connect(this.onconnect, this.onmessage);
       return;
@@ -757,6 +803,11 @@ export class Transport {
     }
     if (this.isLocal) {
       this.localServer.endGame();
+      return;
+    }
+    if (this.isPeerGuest) {
+      for (const u of this.peerUnsubs.splice(0)) u();
+      this.lobbyConfig.peer?.link.close();
       return;
     }
     // A left game is never rejoined through this transport, whatever still
@@ -1063,6 +1114,11 @@ export class Transport {
     if (this.isLocal) {
       // Route to the in-process server; nothing goes over the wire.
       this.localServer.onMessage(msg);
+      return;
+    } else if (this.isPeerGuest) {
+      this.lobbyConfig.peer?.link.sendBinary(
+        encodeClientMessage(msg, undefined),
+      );
       return;
     } else if (this.socket === null) {
       return;

@@ -1,4 +1,4 @@
-import { openP2PTest } from "./components/P2PTest";
+import { openCoopLobby } from "./components/CoopLobby";
 import { GameMapType, GameType } from "@openfront/engine-api/game/GameTypes";
 import { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { PublicGameInfo, PublicGames } from "@openfront/shared/WireSchemas";
@@ -690,27 +690,44 @@ export class GameModeSelector extends LitElement {
       "flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl";
     return html`
       <div class="flex flex-col gap-3 w-full px-4 pb-6 sm:px-0">
-        <button
-          type="button"
-          data-moworld-play
-          ?disabled=${disabled}
-          @click=${this.openSinglePlayerModal}
-          class="relative flex items-center justify-center gap-3 h-20 sm:h-24 rounded-2xl bg-amber-400 text-slate-900 shadow-[0_6px_0_#b45309] transition-all hover:bg-amber-300 active:translate-y-1 active:shadow-[0_2px_0_#b45309] disabled:opacity-50 disabled:pointer-events-none"
-        >
-          <svg
-            class="size-7 sm:size-8"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+        <div class="grid grid-cols-2 gap-2 sm:gap-3">
+          <button
+            type="button"
+            data-moworld-play
+            ?disabled=${disabled}
+            @click=${this.openSinglePlayerModal}
+            class="relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 h-20 sm:h-24 rounded-2xl bg-amber-400 text-slate-900 shadow-[0_6px_0_#b45309] transition-all hover:bg-amber-300 active:translate-y-1 active:shadow-[0_2px_0_#b45309] disabled:opacity-50 disabled:pointer-events-none"
           >
-            <path
-              d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"
-            />
-          </svg>
-          <span class="text-2xl sm:text-3xl font-black tracking-[0.18em]"
-            >JOGAR SOLO</span
+            <svg
+              class="size-6 sm:size-8"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"
+              />
+            </svg>
+            <span
+              class="text-base sm:text-3xl font-black tracking-[0.1em] sm:tracking-[0.18em] whitespace-nowrap"
+              >JOGAR SOLO</span
+            >
+          </button>
+          <!-- MoWorld: partida com outra pessoa (sala por código). -->
+          <button
+            type="button"
+            data-moworld-coop
+            ?disabled=${disabled}
+            @click=${() => openCoopLobby()}
+            class="relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 h-20 sm:h-24 rounded-2xl bg-sky-500 text-white shadow-[0_6px_0_#075985] transition-all hover:bg-sky-400 active:translate-y-1 active:shadow-[0_2px_0_#075985] disabled:opacity-50 disabled:pointer-events-none"
           >
-        </button>
+            <span class="text-xl sm:text-3xl leading-none" aria-hidden="true">🤝</span>
+            <span
+              class="text-base sm:text-3xl font-black tracking-[0.1em] sm:tracking-[0.18em] whitespace-nowrap leading-none"
+              >COM AMIGOS</span
+            >
+          </button>
+        </div>
         <div class="grid grid-cols-3 gap-2 sm:gap-3">
           <button
             type="button"
@@ -810,15 +827,6 @@ export class GameModeSelector extends LitElement {
             </span>
           </button>
         </div>
-        <!-- MoWorld: teste do modo "jogar junto" (conexão entre aparelhos). -->
-        <button
-          type="button"
-          data-moworld-p2p
-          class="mx-auto mt-2 block rounded-full px-3 py-1 text-xs font-semibold text-white/55 hover:text-white hover:bg-white/10"
-          @click=${() => openP2PTest()}
-        >
-          🔌 Jogar junto · teste de conexão
-        </button>
       </div>
       ${this.history !== null ? this.renderHistory(this.history) : null}
     `;

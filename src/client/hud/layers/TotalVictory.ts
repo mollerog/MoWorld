@@ -4,6 +4,7 @@
 // Quando não sobra nenhum adversário vivo (nações, tribos ou jogadores), não há
 // mais nada a fazer: esta tela pausa a partida e a encerra, com um resumo e o
 // botão para voltar ao início.
+import { peerSession } from "../../peer/PeerSession";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
 import { EventBus } from "@openfront/shared/EventBus";
@@ -55,7 +56,8 @@ export class TotalVictory extends LitElement implements Controller {
       share: me ? (me.numTilesOwned() / land) * 100 : 100,
     };
     // Para o jogo e tira a tela de vitória comum (80%) da frente.
-    this.eventBus.emit(new PauseGameIntentEvent(true));
+    // Jogando junto, pausar pediria o aceite do outro: não pausa.
+    if (!peerSession()) this.eventBus.emit(new PauseGameIntentEvent(true));
     (
       document.querySelector("win-modal") as { hide?: () => void } | null
     )?.hide?.();

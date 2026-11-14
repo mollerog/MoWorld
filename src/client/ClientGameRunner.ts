@@ -1,3 +1,4 @@
+import type { PeerSession } from "./peer/PeerSession";
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import {
   BuildableUnit,
@@ -124,6 +125,8 @@ export interface LobbyConfig {
   // Host only: the play token the lobby was created under, used for the
   // first join so the host joins as the creator (see createLobby).
   creatorToken?: string;
+  // MoWorld: jogando junto por ligação direta (anfitrião ou convidado).
+  peer?: PeerSession;
 }
 
 export interface JoinLobbyResult {

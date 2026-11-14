@@ -18,6 +18,7 @@ import { homeHref, showToast, translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { ImmunityBarVisibleEvent } from "./ImmunityTimer";
 import { ShowReplayPanelEvent } from "./ReplayPanel";
+import { peerSession } from "../../peer/PeerSession";
 import { ShowSettingsModalEvent } from "./SettingsModal";
 import { SpawnBarVisibleEvent } from "./SpawnTimer";
 const exitIcon = assetUrl("images/ExitIconWhite.svg");
@@ -141,6 +142,10 @@ export class GameRightSidebar extends LitElement implements Controller {
   }
 
   tick() {
+    if (peerSession() && this.isPaused !== this.game.isPaused()) {
+      this.isPaused = this.game.isPaused();
+      this.requestUpdate();
+    }
     // Timer logic
     // Check if the player is the lobby creator
     if (!this.isLobbyCreator && this.game.myPlayer()?.isLobbyCreator()) {
@@ -233,6 +238,12 @@ export class GameRightSidebar extends LitElement implements Controller {
   }
 
   private onPauseButtonClick() {
+    // MoWorld, jogando junto: pausar/continuar é um pedido ao outro jogador;
+    // o botão segue o estado real do jogo (atualizado no tick).
+    if (peerSession()) {
+      this.eventBus.emit(new PauseGameIntentEvent(!this.game.isPaused()));
+      return;
+    }
     this.isPaused = !this.isPaused;
     if (this.isPaused) {
       void gamePortal.gameplayStop();

@@ -327,6 +327,10 @@ export class Config {
   soloSpawnConfirmTurns(): number {
     return 100;
   }
+  // MoWorld: jogando junto, prazo (ticks) para todos escolherem onde nascer.
+  coopSpawnTurns(): number {
+    return 300;
+  }
   numSpawnPhaseTurns(): number {
     if (this._gameConfig.gameType === GameType.Singleplayer) {
       return 100;

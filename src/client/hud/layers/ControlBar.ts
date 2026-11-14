@@ -4,6 +4,7 @@
 // terra numa barra até a meta de vitória (80%, ou menor com prorrogação), a
 // sua posição no ranking e o principal rival (o 1º lugar, ou o 2º quando o
 // 1º é você).
+import { SpawnClock } from "../SpawnClock";
 import { renderNumber } from "@openfront/engine-lib/Format";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
@@ -33,7 +34,7 @@ export class ControlBar extends LitElement implements Controller {
     return 250;
   }
 
-  private firstSpawnTick: number | null = null;
+  private spawnClock = new SpawnClock();
 
   tick() {
     const me = this.game.myPlayer();
@@ -62,13 +63,11 @@ export class ControlBar extends LitElement implements Controller {
     const ticks = this.game.ticks();
     let chip: Snapshot["chip"] = null;
     if (this.game.inSpawnPhase()) {
-      // Solo: a contagem começa na primeira escolha de lugar.
-      this.firstSpawnTick ??= ticks;
-      const end = this.firstSpawnTick + cfg.soloSpawnConfirmTurns();
+      // Solo / jogando junto: contagem para a partida começar.
       chip = {
         icon: "⏳",
         label: "Começa em",
-        seconds: Math.max(0, (end - ticks) / 10),
+        seconds: this.spawnClock.secondsLeft(this.game) ?? 0,
       };
     } else {
       const left = cfg.spawnImmunityDuration() - this.game.ticksSinceStart();

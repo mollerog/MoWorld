@@ -32,6 +32,7 @@ import { EngineConfig } from "./configuration/EngineConfig";
 import { DoomsdayClockExecution } from "./execution/DoomsdayClockExecution";
 import { Executor } from "./execution/ExecutionManager";
 import { RecomputeRailClusterExecution } from "./execution/RecomputeRailClusterExecution";
+import { SoloSpawnCountdownExecution } from "./execution/SoloSpawnCountdownExecution";
 import { SpawnTimerExecution } from "./execution/SpawnTimerExecution";
 import { WinCheckExecution } from "./execution/WinCheckExecution";
 import { Game, Player } from "./game/Game";
@@ -183,6 +184,18 @@ export class GameRunner {
   init() {
     if (this.game.config().gameConfig().gameType !== GameType.Singleplayer) {
       this.game.addExecution(new SpawnTimerExecution());
+    } else if (
+      this.game.allPlayers().filter((p) => p.type() === PlayerType.Human)
+        .length > 1
+    ) {
+      // MoWorld, jogando junto: prazo para todos escolherem onde nascer.
+      this.game.addExecution(
+        new SoloSpawnCountdownExecution(
+          this.game.ticks() + this.game.config().coopSpawnTurns(),
+          this.execManager.gameID(),
+          true,
+        ),
+      );
     }
     if (this.game.config().spawnNations()) {
       this.game.addExecution(...this.execManager.nationExecutions());

@@ -25,6 +25,7 @@ import {
 } from "../../utilities/LobbySettingsSummary";
 import { getMapName, homeHref, translateText } from "../../Utils";
 import type { GameView } from "../../view/GameView";
+import { peerSession } from "../../peer/PeerSession";
 const exitIcon = assetUrl("images/ExitIconWhite.svg");
 const settingsIcon = assetUrl("images/SettingIconWhite.svg");
 const treeIcon = assetUrl("images/TreeIconWhite.svg");
@@ -157,7 +158,9 @@ export class SettingsModal extends LitElement implements Controller {
 
     // Only pause the simulation itself when we own the pause (singleplayer or
     // lobby creator).
-    if (this.shouldPause && !this.wasPausedWhenOpened) {
+    // MoWorld: jogando junto, abrir as configurações não pausa (pausar exige
+    // o aceite do outro jogador).
+    if (this.shouldPause && !this.wasPausedWhenOpened && !peerSession()) {
       this.eventBus.emit(new PauseGameIntentEvent(pause));
     }
   }

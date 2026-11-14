@@ -120,7 +120,8 @@ export class SpawnExecution implements Execution {
 
     if (
       this.mg.config().gameConfig().gameType === GameType.Singleplayer &&
-      this.playerInfo.playerType === PlayerType.Human
+      this.playerInfo.playerType === PlayerType.Human &&
+      this.mg.inSpawnPhase()
     ) {
       // MoWorld: no solo, a partida começa alguns segundos depois da
       // primeira escolha; trocar de lugar nesse tempo não reinicia a contagem.
