@@ -59,7 +59,7 @@ export class Footer extends LitElement {
               : nothing
           }
           <div
-            class="text-xs mt-2 lg:mt-1 flex items-center justify-center gap-4 px-4"
+            class="text-[11px] sm:text-xs mt-2 lg:mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-0.5 pl-4 pr-16 sm:px-4"
           >
             <!-- MoWorld: links do próprio projeto. O crédito ao OpenFront fica
                  (exigido pela AGPL / CC BY-SA). -->
@@ -67,15 +67,20 @@ export class Footer extends LitElement {
               href="https://github.com/mollerog/MoWorld"
               target="_blank"
               rel="noopener noreferrer"
-              class="hover:text-white transition-colors"
+              class="hover:text-white transition-colors whitespace-nowrap"
               >Código-fonte</a
             >
-            <span data-i18n="main.copyright"></span>
+            <!-- Celular: o crédito ocupa a primeira linha inteira; os dois
+                 links ficam juntos na segunda, longe da bandeira. -->
+            <span
+              class="order-first w-full text-center whitespace-nowrap sm:order-none sm:w-auto"
+              data-i18n="main.copyright"
+            ></span>
             <a
               href="https://github.com/mollerog/MoWorld/blob/main/LICENSE"
               target="_blank"
               rel="noopener noreferrer"
-              class="hover:text-white transition-colors"
+              class="hover:text-white transition-colors whitespace-nowrap"
               >Licença AGPL-3.0</a
             >
           </div>
