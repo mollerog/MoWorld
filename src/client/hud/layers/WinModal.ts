@@ -1,4 +1,5 @@
-import { GameType } from "@openfront/engine-api/game/GameTypes";
+import { GameType, UnitType } from "@openfront/engine-api/game/GameTypes";
+import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
 import { GameUpdateType } from "@openfront/engine-api/game/GameUpdates";
 import type { AllPlayersStats, Winner } from "@openfront/engine-api/Schemas";
 import type { GameXpEligible, Progress } from "@openfront/shared/ApiSchemas";
@@ -241,7 +242,7 @@ export class WinModal extends LitElement implements Controller {
         <div class="mt-4 flex flex-wrap justify-between gap-2.5 shrink-0">
           ${this.actionButton(
             "quiet",
-            translateText("win_modal.exit"),
+            "Encerrar partida",
             () => this._handleExit(),
             "exit",
           )}
@@ -529,7 +530,79 @@ export class WinModal extends LitElement implements Controller {
     </style>`;
   }
 
+  // MoWorld: no lugar das promoções (Discord, Steam, loja), o resumo da
+  // partida — tempo, território, posição, tropas, ouro e construções.
   innerHtml() {
+    return this.matchSummary();
+  }
+
+  private matchSummary(): TemplateResult | typeof nothing {
+    const game = this.game;
+    const me = game?.myPlayer();
+    if (!game || !me) return nothing;
+    const land = Math.max(game.numLandTiles() - game.numTilesWithFallout(), 1);
+    const share = (me.numTilesOwned() / land) * 100;
+    const alive = game
+      .players()
+      .filter((p) => p.isAlive())
+      .sort((a, b) => b.numTilesOwned() - a.numTilesOwned());
+    const rank = alive.findIndex((p) => p.id() === me.id()) + 1;
+    const secs = Math.floor(game.elapsedGameSeconds());
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const sec = String(secs % 60).padStart(2, "0");
+    const time = h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m}:${sec}`;
+    const buildings = me.units(
+      UnitType.City,
+      UnitType.Factory,
+      UnitType.Port,
+      UnitType.DefensePost,
+      UnitType.MissileSilo,
+      UnitType.SAMLauncher,
+    ).length;
+    const pct =
+      share >= 10
+        ? share.toFixed(0)
+        : share >= 1
+          ? share.toFixed(1)
+          : share.toFixed(2);
+    const tiles: [string, string, string][] = [
+      ["⏱", "Duração", time],
+      ["🗺", "Território", `${pct}%`],
+      [
+        "🏆",
+        "Posição",
+        me.isAlive() && rank > 0 ? `${rank}º de ${alive.length}` : "Eliminado",
+      ],
+      ["🪖", "Tropas", renderTroops(me.troops())],
+      ["💰", "Ouro", renderNumber(me.gold())],
+      ["🏗", "Construções", String(buildings)],
+    ];
+    return html`
+      <div
+        class="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-xl bg-black/30 p-2.5"
+      >
+        ${tiles.map(
+          ([icon, label, value]) => html`
+            <div
+              class="rounded-lg bg-white/5 border border-white/10 px-3 py-2.5"
+            >
+              <div
+                class="text-[11px] uppercase tracking-wider text-slate-400 font-bold"
+              >
+                ${icon} ${label}
+              </div>
+              <div class="mt-0.5 text-xl font-extrabold text-white">
+                ${value}
+              </div>
+            </div>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  innerHtmlOriginal() {
     // The Steam desktop build has nothing to wishlist — fall through to the
     // other promos so the box is never empty.
     const canWishlist = !steamSDK.isOnSteam();
