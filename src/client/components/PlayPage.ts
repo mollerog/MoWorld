@@ -1,6 +1,7 @@
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
 import "./AccountButton";
+import { openP2PTest } from "./P2PTest";
 import "./CosmeticBackground";
 import "./NavAccountMenu";
 import "./NavUtilityIcons";
@@ -73,6 +74,15 @@ export class PlayPage extends LitElement {
             <div
               class="col-start-3 justify-self-end shrink-0 flex items-center gap-0.5"
             >
+              <button
+                type="button"
+                data-moworld-p2p-top
+                title="Jogar junto · teste de conexão"
+                class="flex h-10 items-center gap-1 rounded-full px-2.5 text-sm font-bold text-white/80 hover:bg-white/10 hover:text-white"
+                @click=${() => openP2PTest()}
+              >
+                🤝<span class="hidden sm:inline">Jogar junto</span>
+              </button>
               <nav-utility-icons size="mobile"></nav-utility-icons>
               <nav-account-menu variant="mobile"></nav-account-menu>
             </div>
