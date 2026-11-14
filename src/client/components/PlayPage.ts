@@ -82,7 +82,7 @@ export class PlayPage extends LitElement {
         <!-- MoWorld: título -->
         <div class="lg:hidden h-[calc(env(safe-area-inset-top)+56px)]"></div>
         <div
-          class="flex flex-col items-center text-center pt-6 pb-4 sm:pt-12 sm:pb-8 select-none"
+          class="mw-hero flex flex-col items-center text-center pt-6 pb-4 sm:pt-12 sm:pb-8 select-none"
         >
           <h1 class="moworld-title">MOWORLD</h1>
           <div class="flex items-center gap-3 mt-1 sm:mt-2">

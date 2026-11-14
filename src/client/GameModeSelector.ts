@@ -1,3 +1,4 @@
+import { openP2PTest } from "./components/P2PTest";
 import { GameMapType, GameType } from "@openfront/engine-api/game/GameTypes";
 import { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { PublicGameInfo, PublicGames } from "@openfront/shared/WireSchemas";
@@ -809,6 +810,15 @@ export class GameModeSelector extends LitElement {
             </span>
           </button>
         </div>
+        <!-- MoWorld: teste do modo "jogar junto" (conexão entre aparelhos). -->
+        <button
+          type="button"
+          data-moworld-p2p
+          class="mx-auto mt-2 block rounded-full px-3 py-1 text-xs font-semibold text-white/55 hover:text-white hover:bg-white/10"
+          @click=${() => openP2PTest()}
+        >
+          🔌 Jogar junto · teste de conexão
+        </button>
       </div>
       ${this.history !== null ? this.renderHistory(this.history) : null}
     `;

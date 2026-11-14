@@ -5,7 +5,7 @@
 // 4G/5G. O Firestore só apresenta um aparelho ao outro (troca de "oferta" e
 // "resposta"); depois disso os dados vão direto de um para o outro.
 //
-// Abre com https://moworld-114d8.web.app/#p2p (precisa estar logado).
+// Abre pelo link "Jogar junto · teste de conexão" da tela inicial.
 import {
   deleteDoc,
   doc,
@@ -298,7 +298,6 @@ export class P2PTest extends LitElement {
 
   private close() {
     void this.reset();
-    history.replaceState(null, "", location.pathname + location.search);
     this.remove();
   }
 
@@ -453,16 +452,9 @@ ${this.log.join("\n")}</pre>`
   }
 }
 
-/** Abre o teste quando o endereço termina em #p2p. */
-export function maybeOpenP2PTest() {
-  const open = () => {
-    if (
-      location.hash === "#p2p" &&
-      !document.querySelector("moworld-p2p-test")
-    ) {
-      document.body.appendChild(document.createElement("moworld-p2p-test"));
-    }
-  };
-  open();
-  window.addEventListener("hashchange", open);
+/** Abre o teste de conexão por cima da tela inicial. */
+export function openP2PTest() {
+  if (!document.querySelector("moworld-p2p-test")) {
+    document.body.appendChild(document.createElement("moworld-p2p-test"));
+  }
 }
