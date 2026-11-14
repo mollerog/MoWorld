@@ -219,7 +219,10 @@ export class HeadsUpMessage extends LitElement implements Controller {
             10,
         ),
       );
-      return `Começando em ${left}s · toque em outro lugar para trocar`;
+      const verb = window.matchMedia?.("(pointer: coarse)").matches
+        ? "toque"
+        : "clique";
+      return `Começando em ${left}s · ${verb} em outro lugar para trocar`;
     }
     if (this.isCatchingUp) {
       return translateText("heads_up_message.catching_up");

@@ -517,6 +517,11 @@
           transform-origin: bottom left;
         }
       }
+      /* O pop-up de alvo é todo "fixed": o elemento em si não pode ocupar uma
+         célula da grade do topo no PC (empurrava o painel da direita). */
+      moworld-target-popup {
+        display: contents;
+      }
       /* MoWorld: contador de controle no topo, entre os painéis laterais. */
       moworld-control-bar {
         position: fixed;
