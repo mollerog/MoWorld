@@ -25,5 +25,29 @@ service cloud.firestore {
       allow read, delete: if isOwner();
       allow create, update: if isOwner() && validMatch();
     }
+
+    // Teste de conexão entre dois aparelhos (#p2p): quem cria a sala publica
+    // a "oferta"; outra pessoa logada publica a "resposta" uma única vez.
+    match /p2pTests/{code} {
+      function signedIn() {
+        return request.auth != null;
+      }
+      allow read: if signedIn() && code.size() == 6;
+      allow create: if signedIn()
+        && code.matches('^[A-Z2-9]{6}$')
+        && request.resource.data.keys().hasOnly(['host', 'offer', 'createdAt'])
+        && request.resource.data.host == request.auth.uid
+        && request.resource.data.offer is string
+        && request.resource.data.offer.size() <= 20000
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+        && request.auth.uid != resource.data.host
+        && !('answer' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guest', 'answer'])
+        && request.resource.data.guest == request.auth.uid
+        && request.resource.data.answer is string
+        && request.resource.data.answer.size() <= 20000;
+      allow delete: if signedIn() && request.auth.uid == resource.data.host;
+    }
   }
 }

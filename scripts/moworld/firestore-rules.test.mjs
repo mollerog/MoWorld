@@ -8,7 +8,7 @@ import {
 } from "@firebase/rules-unit-testing";
 import { readFileSync } from "node:fs";
 import { after, before, beforeEach, test } from "node:test";
-import { deleteDoc, doc, getDoc, getDocs, collection, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc, getDocs, collection, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const rulesPath = process.env.RULES_PATH ?? new URL("../../firestore.rules", import.meta.url).pathname;
 let env;
@@ -86,4 +86,37 @@ test("nada fora de users/{uid}/matches é acessível", async () => {
   await assertFails(setDoc(doc(db, "users/gabriel"), { a: 1 }));
   await assertFails(setDoc(doc(db, "outra/coisa"), { a: 1 }));
   await assertFails(getDoc(doc(db, "users/gabriel")));
+});
+
+// ---- Teste de conexão (#p2p) ----
+const room = (host) => ({ host, offer: "v=0 oferta", createdAt: serverTimestamp() });
+
+test("p2p: logado cria sala com o próprio uid; outro responde uma vez", async () => {
+  await assertSucceeds(setDoc(doc(gabriel(), "p2pTests/ABC234"), room("gabriel")));
+  await assertSucceeds(getDoc(doc(milena(), "p2pTests/ABC234")));
+  await assertSucceeds(
+    updateDoc(doc(milena(), "p2pTests/ABC234"), { guest: "milena", answer: "v=0 resposta" }),
+  );
+  // Segunda resposta (sequestro da sala) é negada.
+  const intruso = env.authenticatedContext("intruso").firestore();
+  await assertFails(
+    updateDoc(doc(intruso, "p2pTests/ABC234"), { guest: "intruso", answer: "x" }),
+  );
+  await assertFails(deleteDoc(doc(milena(), "p2pTests/ABC234")));
+  await assertSucceeds(deleteDoc(doc(gabriel(), "p2pTests/ABC234")));
+});
+
+test("p2p: regras negam sala inválida, sem login ou trocando a oferta", async () => {
+  await assertFails(setDoc(doc(anon(), "p2pTests/ABC234"), room("gabriel")));
+  await assertFails(setDoc(doc(gabriel(), "p2pTests/ABC234"), room("milena")));
+  await assertFails(setDoc(doc(gabriel(), "p2pTests/abc"), room("gabriel")));
+  await assertFails(
+    setDoc(doc(gabriel(), "p2pTests/ABC235"), { ...room("gabriel"), extra: 1 }),
+  );
+  await assertSucceeds(setDoc(doc(gabriel(), "p2pTests/ABC236"), room("gabriel")));
+  await assertFails(updateDoc(doc(milena(), "p2pTests/ABC236"), { offer: "trocada" }));
+  await assertFails(
+    updateDoc(doc(gabriel(), "p2pTests/ABC236"), { guest: "gabriel", answer: "x" }),
+  );
+  await assertFails(getDoc(doc(anon(), "p2pTests/ABC236")));
 });

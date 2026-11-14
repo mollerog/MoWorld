@@ -19,6 +19,7 @@ import { ClientEnv } from "src/client/ClientEnv";
 import { renderNavVersion } from "src/client/GameVersion";
 import { responseHasLinkedIdentity } from "./AccountIdentity";
 import { adGatekeeper } from "./AdGatekeeper";
+import { maybeOpenP2PTest } from "./components/P2PTest";
 import { startMatchHistorySync } from "./MatchHistory";
 import { loadAdmiral, onAdmiralMeasured } from "./Admiral";
 import { wasAdmitted } from "./AdmittedLobbies";
@@ -417,6 +418,8 @@ class Client {
     capturePagePin();
     // MoWorld: conta Google opcional + histórico na nuvem (com migração).
     startMatchHistorySync();
+    // MoWorld: teste de conexão entre dois aparelhos (#p2p).
+    maybeOpenP2PTest();
     document.documentElement.style.setProperty(
       "--hud-opacity",
       String(this.userSettings.hudOpacity()),
