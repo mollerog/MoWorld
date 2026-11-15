@@ -34,6 +34,8 @@ type Target = {
   tile: TileRef;
   owner: PlayerView | null; // null = terra livre
   actions: PlayerActions;
+  /** Dá para chegar nesse pedaço por terra (ataque comum) ou só de barco. */
+  byLand: boolean;
 };
 
 @customElement("moworld-target-popup")
@@ -104,7 +106,8 @@ export class TargetPopup extends LitElement implements Controller {
       (cur.owner?.id() ?? null) === key &&
       (cur.actions.canAttack || this.canBoat(cur.actions))
     ) {
-      this.attackAndClose(cur);
+      // Pode ser outra ilha da mesma nação: vale o lugar do segundo toque.
+      this.attackAndClose({ ...cur, tile, byLand: this.byLand(tile) });
       return;
     }
     // Toque duplo rápido: o primeiro ainda nem abriu o pop-up. Marca a
@@ -123,7 +126,7 @@ export class TargetPopup extends LitElement implements Controller {
     me.actions(tile)
       .then((actions) => {
         if (this.request !== request) return;
-        const target = { tile, owner, actions };
+        const target = { tile, owner, actions, byLand: this.byLand(tile) };
         if (request.auto && (actions.canAttack || this.canBoat(actions))) {
           this.attackAndClose(target);
           return;
@@ -135,9 +138,50 @@ export class TargetPopup extends LitElement implements Controller {
 
   private attackAndClose(t: Target) {
     this.target = t;
-    if (t.actions.canAttack) this.attack();
+    if (this.useLand(t)) this.attack();
     else this.boat();
     this.close();
+  }
+
+  /** Ataque por terra só quando esse pedaço encosta no seu território. */
+  private useLand(t: Target): boolean {
+    if (!t.actions.canAttack) return false;
+    return t.byLand || !this.canBoat(t.actions);
+  }
+
+  /**
+   * O pedaço tocado (terras contínuas do mesmo dono) encosta no meu
+   * território? Se não, é ilha/outro continente: precisa de barco — atacar
+   * "por terra" só avançaria pela fronteira que já existe em outro lugar.
+   */
+  private byLand(tile: TileRef): boolean {
+    const me = this.game.myPlayer();
+    if (!me) return false;
+    const g = this.game;
+    const owner = g.owner(tile);
+    const ownerId = owner.isPlayer() ? owner.id() : null;
+    const same = (t: TileRef) => {
+      if (!g.isLand(t)) return false;
+      const o = g.owner(t);
+      return (o.isPlayer() ? o.id() : null) === ownerId;
+    };
+    const seen = new Set<TileRef>([tile]);
+    const queue: TileRef[] = [tile];
+    // Limite para continentes grandes: aí com certeza é ataque por terra
+    // se você já faz fronteira (o jogo decide pela fronteira).
+    while (queue.length > 0 && seen.size < 40_000) {
+      const t = queue.pop()!;
+      for (const n of g.neighbors(t)) {
+        if (seen.has(n)) continue;
+        const o = g.owner(n);
+        if (o.isPlayer() && o.id() === me.id()) return true;
+        if (same(n)) {
+          seen.add(n);
+          queue.push(n);
+        }
+      }
+    }
+    return seen.size >= 40_000;
   }
 
   private close() {
@@ -249,7 +293,8 @@ export class TargetPopup extends LitElement implements Controller {
     const share = owner ? (owner.numTilesOwned() / land) * 100 : 0;
     const allied = owner !== null && me.isFriendly(owner);
     const traitor = owner?.isTraitor() ?? false;
-    const canAttack = t.actions.canAttack;
+    // Ilha/outro pedaço sem fronteira com você: o botão vira Barco.
+    const canAttack = this.useLand(t);
     const canBoat = this.canBoat(t.actions);
     const canAlly =
       owner !== null &&
