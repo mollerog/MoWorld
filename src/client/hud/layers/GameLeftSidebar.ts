@@ -1,3 +1,4 @@
+import { GoToPlayerEvent } from "../../TransformHandler";
 import { GameMode, type Team } from "@openfront/engine-api/game/GameTypes";
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import type { EventBus } from "@openfront/shared/EventBus";
@@ -116,6 +117,11 @@ export class GameLeftSidebar extends LitElement implements Controller {
     this.isTeamStatsShown = !this.isTeamStatsShown;
   }
 
+  private goToMe(): void {
+    const me = this.game?.myPlayer();
+    if (me && me.isAlive()) this.eventBus?.emit(new GoToPlayerEvent(me));
+  }
+
   private toggleAlternateView(): void {
     this.eventBus?.emit(new AlternateViewEvent(!this.alternateView));
   }
@@ -220,6 +226,23 @@ export class GameLeftSidebar extends LitElement implements Controller {
               width="20"
               height="20"
             />
+          </div>
+          <!-- MoWorld: centraliza a câmera no seu território. -->
+          <div
+            class="cursor-pointer p-0.5 bg-gray-700/50 hover:bg-gray-600 border rounded-md border-slate-500 transition-colors flex items-center justify-center w-[26px] h-[26px] text-[17px] leading-none"
+            role="button"
+            tabindex="0"
+            title="Ir até o meu território"
+            data-moworld-goto-me
+            @click=${() => this.goToMe()}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                this.goToMe();
+              }
+            }}
+          >
+            🎯
           </div>
           ${
             this.isPlayerStatsShown || this.isTeamStatsShown

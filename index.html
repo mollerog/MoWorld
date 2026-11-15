@@ -531,7 +531,8 @@
       }
       /* O pop-up de alvo é todo "fixed": o elemento em si não pode ocupar uma
          célula da grade do topo no PC (empurrava o painel da direita). */
-      moworld-target-popup {
+      moworld-target-popup,
+      moworld-attack-alert {
         display: contents;
       }
       /* MoWorld: contador de controle no topo, entre os painéis laterais. */
@@ -1086,6 +1087,7 @@
         class="lg:col-start-1 lg:justify-self-start"
       ></game-left-sidebar>
       <moworld-target-popup></moworld-target-popup>
+      <moworld-attack-alert></moworld-attack-alert>
       <moworld-control-bar></moworld-control-bar>
       <player-info-overlay
         class="lg:col-start-2 lg:min-w-0"

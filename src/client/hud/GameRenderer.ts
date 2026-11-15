@@ -48,6 +48,7 @@ import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
 import { ControlBar } from "./layers/ControlBar";
 import { MatchHistoryRecorder } from "../MatchHistory";
+import { AttackAlert } from "./layers/AttackAlert";
 import { NukeBatchBar } from "./layers/NukeBatchBar";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TotalVictory } from "./layers/TotalVictory";
@@ -347,6 +348,16 @@ export function createRenderer(
   targetPopup.transform = transformHandler;
   targetPopup.uiState = uiState;
 
+  // MoWorld: aviso de ataque recebido.
+  const attackAlert = document.querySelector(
+    "moworld-attack-alert",
+  ) as AttackAlert;
+  if (!(attackAlert instanceof AttackAlert)) {
+    console.error("attack alert not found");
+  }
+  attackAlert.game = game;
+  attackAlert.eventBus = eventBus;
+
   // MoWorld: lote de bombas (celular).
   const nukeBatch = document.querySelector(
     "moworld-nuke-batch",
@@ -431,6 +442,7 @@ export function createRenderer(
     tutorialPanel,
     targetPopup,
     nukeBatch,
+    attackAlert,
     controlBar,
     totalVictory,
     new MatchHistoryRecorder(game),
