@@ -110,6 +110,11 @@ export class MainRadialMenu implements Controller {
         return;
       }
       const clickedTile = this.game.ref(worldCoords.x, worldCoords.y);
+      // MoWorld: no mar não há o que fazer pelo menu circular.
+      if (this.game.isWater(clickedTile)) {
+        this.menuRequest = null;
+        return;
+      }
       this.clickedTile = clickedTile;
 
       // Spectators (replay, dead, pre-spawn): skip the action radial and open

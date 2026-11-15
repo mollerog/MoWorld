@@ -605,10 +605,34 @@
           width: 598px;
         }
       }
-      /* Celular deitado: mais compacto no meio. */
+      /* Celular deitado: a barra de controle ocupa o espaço entre os dois
+         painéis do topo (8px de cada lado), os painéis ficam simétricos
+         (a área da câmera vale para os dois lados) e o aviso do topo fica
+         abaixo da barra. */
       @media (max-width: 1023px) and (orientation: landscape) {
+        body.in-game {
+          --mw-side: max(env(safe-area-inset-left), env(safe-area-inset-right));
+        }
+        body.in-game game-left-sidebar .bg-gray-800\/92 {
+          left: calc(8px + var(--mw-side)) !important;
+        }
+        body.in-game div:has(> game-right-sidebar) {
+          right: var(--mw-side) !important;
+        }
         moworld-control-bar {
-          width: min(372px, calc(100vw - 486px));
+          width: auto;
+          left: calc(var(--mw-side, 0px) + 8px + 86px + 8px) !important;
+          right: calc(var(--mw-side, 0px) + 8px + 232px + 8px) !important;
+          transform: none !important;
+          translate: none !important;
+        }
+        body.in-game .mw-headsup {
+          top: calc(env(safe-area-inset-top) + 84px) !important;
+          /* centralizado embaixo da barra (painel da direita é mais largo) */
+          left: calc(50% - 73px) !important;
+        }
+        body.in-game player-info-overlay .bg-gray-800\/92 {
+          margin-top: 100px !important;
         }
       }
       /* Telas baixas (notebook com barra de favoritos): título mais junto,
