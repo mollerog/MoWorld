@@ -49,6 +49,10 @@ import { SpawnTimer } from "./layers/SpawnTimer";
 import { ControlBar } from "./layers/ControlBar";
 import { MatchHistoryRecorder } from "../MatchHistory";
 import { AttackAlert } from "./layers/AttackAlert";
+import { AutoSave } from "./layers/AutoSave";
+import { maybeShowGestureGuide } from "../components/GestureGuide";
+import { peerSession } from "../peer/PeerSession";
+import { GameType } from "@openfront/engine-api/game/GameTypes";
 import { NukeBatchBar } from "./layers/NukeBatchBar";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TotalVictory } from "./layers/TotalVictory";
@@ -348,6 +352,19 @@ export function createRenderer(
   targetPopup.transform = transformHandler;
   targetPopup.uiState = uiState;
 
+  // MoWorld: guia dos controles na primeira partida solo.
+  {
+    const gc = game.config().gameConfig();
+    if (
+      gc.gameType === GameType.Singleplayer &&
+      gc.tutorial !== true &&
+      !game.config().isReplay() &&
+      peerSession() === null
+    ) {
+      maybeShowGestureGuide();
+    }
+  }
+
   // MoWorld: aviso de ataque recebido.
   const attackAlert = document.querySelector(
     "moworld-attack-alert",
@@ -443,6 +460,7 @@ export function createRenderer(
     targetPopup,
     nukeBatch,
     attackAlert,
+    new AutoSave(game),
     controlBar,
     totalVictory,
     new MatchHistoryRecorder(game),

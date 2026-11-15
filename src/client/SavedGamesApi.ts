@@ -1,7 +1,4 @@
-import {
-  type SavedGame,
-  SavedGameSchema,
-} from "@openfront/shared/ApiSchemas";
+import { type SavedGame, SavedGameSchema } from "@openfront/shared/ApiSchemas";
 
 // Saved singleplayer games. The API stores the gzipped bytes of a game
 // snapshot (WorkerClient.snapshot()) as they are; it never decodes them.
@@ -116,6 +113,47 @@ export async function uploadSavedGame(
   } catch (err) {
     console.warn("uploadSavedGame: IndexedDB failed", err);
     return "request_failed";
+  }
+}
+
+// MoWorld: salvamento automático. Um único save fixo, sobrescrito a cada
+// vez, para não encher a lista.
+export const AUTOSAVE_ID = "moworld-autosave";
+
+export async function writeAutosave(
+  snapshot: Uint8Array,
+  meta: { name: string; map: string; tick: number },
+): Promise<boolean> {
+  try {
+    const data = await gzip(snapshot);
+    const save: SavedGame = {
+      id: AUTOSAVE_ID,
+      name: meta.name.slice(0, 64),
+      map: meta.map,
+      tick: meta.tick,
+      sizeBytes: data.byteLength,
+      public: false,
+      createdAt: new Date().toISOString(),
+    };
+    await tx([STORE_META, STORE_DATA], "readwrite", (t) => {
+      t.objectStore(STORE_META).put(save);
+      t.objectStore(STORE_DATA).put(data, save.id);
+    });
+    return true;
+  } catch (err) {
+    console.warn("writeAutosave: IndexedDB failed", err);
+    return false;
+  }
+}
+
+export async function deleteAutosave(): Promise<void> {
+  try {
+    await tx([STORE_META, STORE_DATA], "readwrite", (t) => {
+      t.objectStore(STORE_META).delete(AUTOSAVE_ID);
+      t.objectStore(STORE_DATA).delete(AUTOSAVE_ID);
+    });
+  } catch {
+    /* nada a apagar */
   }
 }
 

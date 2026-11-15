@@ -26,6 +26,7 @@ import {
 import { getMapName, homeHref, translateText } from "../../Utils";
 import type { GameView } from "../../view/GameView";
 import { peerSession } from "../../peer/PeerSession";
+import { openGestureGuide } from "../../components/GestureGuide";
 const exitIcon = assetUrl("images/ExitIconWhite.svg");
 const settingsIcon = assetUrl("images/SettingIconWhite.svg");
 const treeIcon = assetUrl("images/TreeIconWhite.svg");
@@ -361,6 +362,22 @@ export class SettingsModal extends LitElement implements Controller {
 
           <div class="p-4 flex flex-col gap-3">
             ${this.renderSaveRow()}
+            <button
+              class="flex gap-3 items-center w-full text-left p-3 hover:bg-slate-700 rounded-sm text-white transition-colors"
+              data-moworld-open-guide
+              @click=${() => {
+                this.closeModal();
+                openGestureGuide();
+              }}
+            >
+              <span class="text-xl w-5 text-center">📖</span>
+              <div class="flex-1">
+                <div class="font-medium">Como jogar</div>
+                <div class="text-sm text-slate-400">
+                  Atacar, construir, bombas, alianças e dicas do MoWorld
+                </div>
+              </div>
+            </button>
 
             <button
               type="button"
