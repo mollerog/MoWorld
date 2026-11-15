@@ -1233,6 +1233,7 @@ export class BuildPreviewController implements Controller {
           this.uiState.upgradeMultiplier || 1,
         ),
       );
+      navigator.vibrate?.(12);
       if (endsPlacement) this.removeGhostStructure();
     } else if (unit.canBuild !== false) {
       const unitType = unit.type;
@@ -1255,6 +1256,8 @@ export class BuildPreviewController implements Controller {
           isNuke ? this.uiState.upgradeMultiplier || 1 : undefined,
         ),
       );
+      // MoWorld: vibração curta no celular confirmando a construção/lançamento.
+      navigator.vibrate?.(isNukeType(unitType) ? 30 : 12);
       if (endsPlacement || !shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
       }

@@ -10,7 +10,7 @@ import {
   PlayerType,
   UnitType,
 } from "@openfront/engine-api/game/GameTypes";
-import { renderTroops } from "@openfront/engine-lib/Format";
+import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
 import { EventBus, GameEvent } from "@openfront/shared/EventBus";
 import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
@@ -102,6 +102,8 @@ export class TargetPopup extends LitElement implements Controller {
     const key = owner?.id() ?? null;
     const cur = this.target;
     if (cur !== null && (cur.owner?.id() ?? null) === key) {
+      // Aliado: o segundo toque não ataca; o pop-up mostra as doações.
+      if (cur.owner && me.isFriendly(cur.owner)) return;
       // Pode ser outra ilha da mesma nação: vale o lugar do segundo toque.
       this.attackAndClose({ ...cur, tile, byLand: this.byLand(tile) });
       return;
@@ -309,6 +311,26 @@ export class TargetPopup extends LitElement implements Controller {
     this.leftPx = Math.round(leftX);
   }
 
+  // Aliado: doar tropas (a % de ataque escolhida) ou 1/3 do ouro.
+  private donateTroops() {
+    const t = this.target;
+    if (!t?.owner) return;
+    const amount = this.sendTroops();
+    this.handler.handleDonateTroops(t.owner, amount);
+    this.close();
+    this.toast(`🪖 ${renderTroops(amount)} tropas doadas`, "ok");
+  }
+
+  private donateGold() {
+    const me = this.game.myPlayer();
+    const t = this.target;
+    if (!me || !t?.owner) return;
+    const amount = me.gold() / 3n;
+    this.handler.handleDonateGold(t.owner);
+    this.close();
+    this.toast(`💰 ${renderNumber(amount)} de ouro doado`, "ok");
+  }
+
   private ally() {
     const me = this.game.myPlayer();
     const t = this.target;
@@ -423,9 +445,25 @@ export class TargetPopup extends LitElement implements Controller {
         <div class="mt-1.5 flex gap-1.5">
           ${
             allied
-              ? html`<div class="flex-1 text-[11px] text-slate-400">
-                  Segure no mapa para doar tropas ou ouro.
-                </div>`
+              ? html`<button
+                    type="button"
+                    class="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-sky-500 text-white text-xs font-black shadow-[0_2px_0_#075985] active:translate-y-px disabled:opacity-40"
+                    data-moworld-donate-troops
+                    ?disabled=${!(t.actions.interaction?.canDonateTroops ?? false)}
+                    @click=${() => this.donateTroops()}
+                  >
+                    🪖 Doar ${renderTroops(sending)}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 flex items-center justify-center gap-1 h-8 rounded-lg bg-amber-400 text-slate-900 text-xs font-black shadow-[0_2px_0_#b45309] active:translate-y-px disabled:opacity-40"
+                    data-moworld-donate-gold
+                    title="Doa 1/3 do seu ouro"
+                    ?disabled=${!(t.actions.interaction?.canDonateGold ?? false)}
+                    @click=${() => this.donateGold()}
+                  >
+                    💰 Doar ${renderNumber(me.gold() / 3n)}
+                  </button>`
               : canAttack
                 ? html`<button
                     type="button"
