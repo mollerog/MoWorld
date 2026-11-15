@@ -525,6 +525,14 @@
         display: contents;
       }
       /* MoWorld: contador de controle no topo, entre os painéis laterais. */
+      moworld-control-bar .mw-cb-time {
+        display: none;
+      }
+      @media (max-width: 1023px) and (orientation: landscape) {
+        moworld-control-bar .mw-cb-time {
+          display: inline;
+        }
+      }
       moworld-control-bar {
         position: fixed;
         top: calc(8px + env(safe-area-inset-top));
@@ -632,13 +640,20 @@
           transform: translateX(-50%) !important;
           translate: none !important;
           width: min(
-            460px,
-            calc(2 * (var(--mw-cx, 50vw) - var(--mw-side, 0px) - 102px)),
-            calc(2 * (100vw - var(--mw-cx, 50vw) - var(--mw-side, 0px) - 248px))
+            372px,
+            calc(2 * (100vw - var(--mw-cx, 50vw) - var(--mw-side, 0px) - 8px - var(--mw-right-w, 172px) - 8px))
           );
         }
-        moworld-control-bar .mw-cb-label {
+        /* O tempo de jogo vai para o card; o painel da direita fica só com
+           os botões (mais estreito) e o card cabe centralizado. */
+        body.in-game game-right-sidebar [data-game-timer] {
           display: none;
+        }
+        body.in-game game-right-sidebar aside {
+          gap: 8px !important;
+        }
+        body.in-game {
+          --mw-right-w: 160px;
         }
         body.in-game .mw-headsup {
           top: calc(env(safe-area-inset-top) + 84px) !important;

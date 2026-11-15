@@ -15,6 +15,7 @@ type Snapshot = {
   myShare: number;
   myRank: number;
   myColor: string;
+  elapsed: number;
   goal: number;
   rival: { name: string; share: number; color: string; first: boolean } | null;
   chip: { icon: string; label: string; seconds: number } | null;
@@ -80,6 +81,7 @@ export class ControlBar extends LitElement implements Controller {
       myShare: (me.numTilesOwned() / land) * 100,
       myRank: myRank || players.length,
       myColor: me.territoryColor().toHex(),
+      elapsed: Math.floor(this.game.elapsedGameSeconds()),
       goal: cfg.percentageTilesOwnedToWin(this.game.elapsedGameSeconds()),
       rival: rivalPlayer
         ? {
@@ -130,7 +132,8 @@ export class ControlBar extends LitElement implements Controller {
           <span class="whitespace-nowrap tabular-nums text-white"
             >#${renderNumber(s.myRank)} · ${this.pct(s.myShare)}</span
           >
-          <span class="ml-auto shrink-0 whitespace-nowrap text-amber-400 tabular-nums"
+          <span
+            class="ml-auto shrink-0 whitespace-nowrap text-amber-400 tabular-nums"
             >META ${s.goal}%</span
           >
         </div>
@@ -152,23 +155,28 @@ export class ControlBar extends LitElement implements Controller {
             style="left:${clamp(s.goal)}%"
           ></div>
         </div>
-        ${
-          s.rival
-            ? html`<div
-                class="mt-1 flex items-center justify-end gap-1.5 text-[11px] text-slate-300"
-              >
-                <span>${s.rival.first ? "👑" : "2º"}</span>
-                <span
-                  class="size-2 shrink-0 rounded-sm"
-                  style="background:${s.rival.color}"
-                ></span>
-                <span class="truncate max-w-[12rem]">${s.rival.name}</span>
-                <span class="tabular-nums text-white"
-                  >${this.pct(s.rival.share)}</span
-                >
-              </div>`
-            : nothing
-        }
+        <div
+          class="mw-cb-row3 mt-1 flex items-center justify-end gap-1.5 text-[11px] text-slate-300"
+        >
+          <!-- Celular deitado: o tempo de jogo fica aqui (sai do painel da
+               direita, para o card caber centralizado). -->
+          <span class="mw-cb-time mr-auto tabular-nums text-white"
+            >⏱ ${this.clock(s.elapsed)}</span
+          >
+          ${
+            s.rival
+              ? html`<span>${s.rival.first ? "👑" : "2º"}</span>
+                  <span
+                    class="size-2 shrink-0 rounded-sm"
+                    style="background:${s.rival.color}"
+                  ></span>
+                  <span class="truncate max-w-[12rem]">${s.rival.name}</span>
+                  <span class="tabular-nums text-white"
+                    >${this.pct(s.rival.share)}</span
+                  >`
+              : nothing
+          }
+        </div>
       </div>
     `;
   }
