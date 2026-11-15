@@ -416,6 +416,20 @@
         }
         .moworld-bar .mw-unit-cost { display: inline !important; }
       }
+      /* Celular: preço embaixo de cada ícone de construção (vermelho = sem
+         ouro), como no PC. */
+      @media (max-width: 1023px) and (orientation: landscape) {
+        body.in-game .moworld-bar .mw-unit-cell {
+          height: 2.6rem !important;
+        }
+      }
+      @media (max-width: 1279px) {
+        .moworld-bar .mw-unit-cost {
+          display: inline !important;
+          font-size: 9px !important;
+          margin-top: 1px;
+        }
+      }
       /* Modo de construção ativo: destaque forte (toque de novo desliga). */
       .moworld-bar .mw-unit-active {
         border-color: #f59e0b !important;
@@ -578,7 +592,7 @@
           max-height: calc(100dvh - var(--mw-top-clear) - 128px - env(safe-area-inset-bottom)) !important;
         }
         body.in-game .moworld-bar .mw-unit-cell {
-          height: 2.4rem !important;
+          height: 2.75rem !important;
         }
         body.in-game .moworld-bar .mw-unit-cell img {
           width: 1.25rem !important;

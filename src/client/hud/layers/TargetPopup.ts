@@ -101,11 +101,7 @@ export class TargetPopup extends LitElement implements Controller {
     // de novo): ataca direto e fecha o pop-up — o ataque já foi a resposta.
     const key = owner?.id() ?? null;
     const cur = this.target;
-    if (
-      cur !== null &&
-      (cur.owner?.id() ?? null) === key &&
-      (cur.actions.canAttack || this.canBoat(cur.actions))
-    ) {
+    if (cur !== null && (cur.owner?.id() ?? null) === key) {
       // Pode ser outra ilha da mesma nação: vale o lugar do segundo toque.
       this.attackAndClose({ ...cur, tile, byLand: this.byLand(tile) });
       return;
@@ -127,7 +123,7 @@ export class TargetPopup extends LitElement implements Controller {
       .then((actions) => {
         if (this.request !== request) return;
         const target = { tile, owner, actions, byLand: this.byLand(tile) };
-        if (request.auto && (actions.canAttack || this.canBoat(actions))) {
+        if (request.auto) {
           this.attackAndClose(target);
           return;
         }
@@ -137,16 +133,70 @@ export class TargetPopup extends LitElement implements Controller {
   }
 
   private attackAndClose(t: Target) {
-    this.target = t;
-    if (this.useLand(t)) this.attack();
-    else this.boat();
+    const me = this.game.myPlayer();
+    const sent = this.sendTroops();
+    const canBoat = this.canBoat(t.actions);
+    if (this.useLand(t)) {
+      this.target = t;
+      this.attack();
+      this.close();
+      this.toast(`⚔ ${renderTroops(sent)} tropas enviadas`, "ok");
+      return;
+    }
+    if (canBoat) {
+      this.target = t;
+      this.boat();
+      this.close();
+      this.toast(`⛵ ${renderTroops(sent)} tropas a caminho`, "ok");
+      return;
+    }
+    // Não deu: diz o porquê em vez de não fazer nada.
     this.close();
+    const max = 3; // boatMaxNumber() do motor (EngineConfig)
+    const boats = me ? me.units(UnitType.TransportShip).length : 0;
+    if (!t.byLand && boats >= max) {
+      this.toast(
+        `⛵ Limite de ${max} barcos no mar — espere um chegar`,
+        "warn",
+      );
+    } else {
+      this.toast("Fora de alcance", "warn");
+    }
+  }
+
+  // ---- aviso curto depois do toque duplo (o pop-up já fechou) ----
+  @state() private toastText: string | null = null;
+  @state() private toastKind: "ok" | "warn" = "ok";
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private toast(text: string, kind: "ok" | "warn") {
+    this.toastText = text;
+    this.toastKind = kind;
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(
+      () => (this.toastText = null),
+      kind === "ok" ? 1300 : 2200,
+    );
+    if (kind === "ok") navigator.vibrate?.(12);
+  }
+
+  private renderToast() {
+    if (!this.toastText) return nothing;
+    return html`<div
+      class="pointer-events-none fixed z-[300] rounded-lg border px-2.5 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md ${
+        this.toastKind === "ok"
+          ? "border-emerald-400/30 bg-slate-950/90 text-emerald-300"
+          : "border-amber-400/40 bg-slate-950/90 text-amber-300"
+      }"
+      style="top:${this.topPx}px; left:${this.leftPx}px;"
+      data-moworld-tap-toast
+    >
+      ${this.toastText}
+    </div>`;
   }
 
   /** Ataque por terra só quando esse pedaço encosta no seu território. */
   private useLand(t: Target): boolean {
-    if (!t.actions.canAttack) return false;
-    return t.byLand || !this.canBoat(t.actions);
+    return t.actions.canAttack && t.byLand;
   }
 
   /**
@@ -281,7 +331,7 @@ export class TargetPopup extends LitElement implements Controller {
 
   render() {
     const t = this.target;
-    if (!t) return nothing;
+    if (!t) return this.renderToast();
     const me = this.game.myPlayer();
     if (!me) return nothing;
     const owner = t.owner;

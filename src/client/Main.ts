@@ -1,4 +1,5 @@
 import "./components/CoopOverlay";
+import { maybePlayAgain, rememberSoloConfig } from "./PlayAgain";
 import type { PeerSession } from "./peer/PeerSession";
 import { GAME_ID_REGEX } from "@openfront/engine-api/Schemas";
 import {
@@ -421,6 +422,8 @@ class Client {
     capturePagePin();
     // MoWorld: conta Google opcional + histórico na nuvem (com migração).
     startMatchHistorySync();
+    // MoWorld: "Jogar de novo" pedido na tela de fim da partida anterior.
+    maybePlayAgain();
     document.documentElement.style.setProperty(
       "--hud-opacity",
       String(this.userSettings.hudOpacity()),
@@ -1828,6 +1831,7 @@ class Client {
       }
       return;
     }
+    rememberSoloConfig(lobby);
     if (this.blockedJoin(lobby)) {
       event.preventDefault();
       return;

@@ -1,3 +1,4 @@
+import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { GameType, UnitType } from "@openfront/engine-api/game/GameTypes";
 import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
 import { GameUpdateType } from "@openfront/engine-api/game/GameUpdates";
@@ -247,6 +248,19 @@ export class WinModal extends LitElement implements Controller {
             "exit",
           )}
           ${this.renderShare()}
+          ${
+            canPlayAgain()
+              ? this.actionButton(
+                  "main",
+                  "↻ Jogar de novo",
+                  () => {
+                    this.hide();
+                    requestPlayAgain();
+                  },
+                  "again",
+                )
+              : null
+          }
           ${
             this.requeueMode !== null
               ? this.actionButton(

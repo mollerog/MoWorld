@@ -1125,7 +1125,8 @@ export class UserSettings {
 
   // What % attack ratio is set to
   attackRatio(): number {
-    return this.getFloat("settings.attackRatio", 0.2);
+    // MoWorld: começa em 10% (um dos botões de %).
+    return this.getFloat("settings.attackRatio", 0.1);
   }
 
   setAttackRatio(value: number): void {

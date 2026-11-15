@@ -4,6 +4,7 @@
 // Quando não sobra nenhum adversário vivo (nações, tribos ou jogadores), não há
 // mais nada a fazer: esta tela pausa a partida e a encerra, com um resumo e o
 // botão para voltar ao início.
+import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { peerSession } from "../../peer/PeerSession";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
@@ -113,6 +114,18 @@ export class TotalVictory extends LitElement implements Controller {
           >
             VOLTAR AO INÍCIO
           </button>
+          ${
+            canPlayAgain()
+              ? html`<button
+                  type="button"
+                  data-moworld-total-victory-again
+                  class="mt-2 flex h-11 w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 text-sm font-black tracking-wider text-white active:bg-white/10"
+                  @click=${() => requestPlayAgain()}
+                >
+                  ↻ JOGAR DE NOVO
+                </button>`
+              : nothing
+          }
         </div>
       </div>
     `;
