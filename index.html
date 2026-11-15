@@ -619,17 +619,33 @@
         body.in-game div:has(> game-right-sidebar) {
           right: var(--mw-side) !important;
         }
+        /* Mesmo centro da barra de baixo (que desvia da câmera), o mais
+           largo possível sem encostar nos painéis do topo. */
+        body.in-game {
+          --mw-cx: calc(
+            50vw + (env(safe-area-inset-left) - env(safe-area-inset-right)) / 2
+          );
+        }
         moworld-control-bar {
-          width: auto;
-          left: calc(var(--mw-side, 0px) + 8px + 86px + 8px) !important;
-          right: calc(var(--mw-side, 0px) + 8px + 232px + 8px) !important;
-          transform: none !important;
+          left: var(--mw-cx, 50vw) !important;
+          right: auto !important;
+          transform: translateX(-50%) !important;
           translate: none !important;
+          width: min(
+            460px,
+            calc(2 * (var(--mw-cx, 50vw) - var(--mw-side, 0px) - 102px)),
+            calc(2 * (100vw - var(--mw-cx, 50vw) - var(--mw-side, 0px) - 248px))
+          );
+        }
+        moworld-control-bar .mw-cb-label {
+          display: none;
         }
         body.in-game .mw-headsup {
           top: calc(env(safe-area-inset-top) + 84px) !important;
-          /* centralizado embaixo da barra (painel da direita é mais largo) */
-          left: calc(50% - 73px) !important;
+          left: var(--mw-cx, 50vw) !important;
+          font-size: 0.8rem !important;
+          padding: 0.35rem 0.8rem !important;
+          white-space: nowrap;
         }
         body.in-game player-info-overlay .bg-gray-800\/92 {
           margin-top: 100px !important;

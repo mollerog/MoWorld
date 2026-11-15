@@ -119,17 +119,18 @@ export class ControlBar extends LitElement implements Controller {
           ${
             s.chip
               ? html`<span
-                  class="flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-emerald-300 tabular-nums"
-                  >${s.chip.icon} ${s.chip.label}
+                  class="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-emerald-300 tabular-nums"
+                  >${s.chip.icon}
+                  <span class="mw-cb-label">${s.chip.label}</span>
                   ${this.clock(s.chip.seconds)}</span
                 >`
               : nothing
           }
-          <span class="text-slate-400">CONTROLE</span>
-          <span class="tabular-nums text-white"
+          <span class="mw-cb-label text-slate-400">CONTROLE</span>
+          <span class="whitespace-nowrap tabular-nums text-white"
             >#${renderNumber(s.myRank)} · ${this.pct(s.myShare)}</span
           >
-          <span class="ml-auto text-amber-400 tabular-nums"
+          <span class="ml-auto shrink-0 whitespace-nowrap text-amber-400 tabular-nums"
             >META ${s.goal}%</span
           >
         </div>
