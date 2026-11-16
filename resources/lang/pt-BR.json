@@ -261,13 +261,13 @@
       "well_played": "Boa jogada!"
     },
     "help": {
-      "alliance": "Alianca?",
+      "alliance": "Aliança?",
       "gold": "Por favor, dê-me ouro!",
       "help_defend": "Me ajude a se defender do [P1]",
-      "no_attack": "Por favor, nao me ataque!",
+      "no_attack": "Por favor, não me ataque!",
       "send_gold_to": "Envie ouro para [P1]!",
       "send_troops_to": "Envie tropas para [P1]!",
-      "sorry_attack": "Desculpa, Nao queria te atacar.",
+      "sorry_attack": "Desculpa, não queria te atacar.",
       "trade_partners": "Vamos ser parceiros comerciais!",
       "troops": "Por favor, me dê tropas!",
       "troops_frontlines": "Envie tropas para as linhas da frente!"
@@ -2475,12 +2475,12 @@
     "title": "Tutorial"
   },
   "unit_type": {
-    "atom_bomb": "Bomba Atomica",
+    "atom_bomb": "Bomba Atômica",
     "boat": "Barco",
     "city": "Cidade",
     "defense_post": "Posto de Defesa",
-    "factory": "Industria",
-    "hydrogen_bomb": "Bomba de Hidrogenio",
+    "factory": "Indústria",
+    "hydrogen_bomb": "Bomba de Hidrogênio",
     "mirv": "MIRV",
     "missile_silo": "Silo de Míssil",
     "port": "Porto",

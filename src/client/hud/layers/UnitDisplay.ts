@@ -899,7 +899,7 @@ export class UnitDisplay extends LitElement implements Controller {
       left = itemBounds.left + itemBounds.width / 2 - (rootBounds?.left ?? 0);
       top = itemBounds.top - (rootBounds?.top ?? 0) - 4;
       placement =
-        "-translate-x-1/2 -translate-y-full max-w-[min(100%_-_1rem,100vw_-_1rem)]";
+        "-translate-x-1/2 -translate-y-full max-w-[min(16rem,100vw_-_1rem)]";
       this._tooltipCenter = left;
     }
 
