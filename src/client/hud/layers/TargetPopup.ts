@@ -105,7 +105,25 @@ export class TargetPopup extends LitElement implements Controller {
       // Aliado: o segundo toque não ataca; o pop-up mostra as doações.
       if (cur.owner && me.isFriendly(cur.owner)) return;
       // Pode ser outra ilha da mesma nação: vale o lugar do segundo toque.
-      this.attackAndClose({ ...cur, tile, byLand: this.byLand(tile) });
+      const byLand = this.byLand(tile);
+      if (byLand || tile === cur.tile) {
+        this.attackAndClose({ ...cur, tile, byLand });
+        return;
+      }
+      // Outro pedaço (ilha) da mesma nação: as ações do primeiro toque são
+      // do continente (lá o barco nem sempre vale). Pergunta de novo para
+      // este lugar, senão o barco não sai enquanto o ataque por terra roda.
+      const request: { key: string | null; auto?: boolean } = {
+        key,
+        auto: true,
+      };
+      this.request = request;
+      me.actions(tile)
+        .then((actions) => {
+          if (this.request !== request) return;
+          this.attackAndClose({ tile, owner, actions, byLand });
+        })
+        .catch((err) => console.warn("TargetPopup: actions failed", err));
       return;
     }
     // Toque duplo rápido: o primeiro ainda nem abriu o pop-up. Marca a

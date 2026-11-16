@@ -284,6 +284,11 @@ function isTrajectoryEqual(
 export class BuildPreviewController implements Controller {
   /** Current ghost (null when no build type is active). */
   private ghostUnit: { buildableUnit: BuildableUnit } | null = null;
+  /**
+   * MoWorld: tipo construído nesta seleção (modo construção contínua). Quando
+   * o ouro não dá para mais um, o modo desliga sozinho.
+   */
+  private builtThisSelection: UnitType | null = null;
   private readonly traitorMarkAllySmallIds: Set<number> = new Set();
   private readonly noMarkAllySmallIds: Set<number> = new Set();
   private readonly usedSafetyAllies: Set<number> = new Set();
@@ -519,9 +524,29 @@ export class BuildPreviewController implements Controller {
     // Re-query buildables periodically (world state can change — tiles may
     // become buildable as troops/territory move).
     this.syncGhostState();
+    if (this.endBuildModeWhenBroke()) return;
     if (!this.isQueryInFlight) {
       this.renderGhost();
     }
+  }
+
+  /**
+   * MoWorld: construiu pelo menos um nesta seleção e o ouro não paga mais um
+   * → desliga o modo construção. Bombas ficam de fora (o lote decide).
+   * @returns true quando desligou.
+   */
+  private endBuildModeWhenBroke(): boolean {
+    const built = this.builtThisSelection;
+    if (built === null) return false;
+    const ghost = this.ghostUnit?.buildableUnit;
+    const me = this.game.myPlayer();
+    if (!ghost || !me || ghost.type !== built) {
+      this.builtThisSelection = null;
+      return false;
+    }
+    if (this.resolveGhostAffordability(me, ghost).canAfford) return false;
+    this.removeGhostStructure();
+    return true;
   }
 
   /**
@@ -1235,6 +1260,7 @@ export class BuildPreviewController implements Controller {
       );
       navigator.vibrate?.(12);
       if (endsPlacement) this.removeGhostStructure();
+      else this.markBuilt(unit.type);
     } else if (unit.canBuild !== false) {
       const unitType = unit.type;
 
@@ -1260,6 +1286,8 @@ export class BuildPreviewController implements Controller {
       navigator.vibrate?.(isNukeType(unitType) ? 30 : 12);
       if (endsPlacement || !shouldPreserveGhostAfterBuild(unitType)) {
         this.removeGhostStructure();
+      } else {
+        this.markBuilt(unitType);
       }
     } else if (endsPlacement) {
       this.removeGhostStructure();
@@ -1568,7 +1596,12 @@ export class BuildPreviewController implements Controller {
     this.processPendingConfirmations();
   }
 
+  private markBuilt(unitType: UnitType) {
+    if (!isNukeType(unitType)) this.builtThisSelection = unitType;
+  }
+
   private removeGhostStructure() {
+    this.builtThisSelection = null;
     this.clearNukeTargets();
     const hadGhost =
       this.ghostUnit !== null || this.uiState.ghostStructure !== null;

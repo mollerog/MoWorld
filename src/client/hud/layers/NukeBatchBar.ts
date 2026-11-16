@@ -63,6 +63,27 @@ export class NukeBatchBar extends LitElement implements Controller {
     cancelAnimationFrame(this.raf);
   }
 
+  /**
+   * Topo da barra de baixo, pelo que se vê dela: o painel e a fileira de
+   * construções. A caixa da barra inteira já veio mais alta do que o desenho
+   * (o pop-up ficava no meio da tela); a coluna fixa de construções do
+   * celular em pé fica de fora, ela não está embaixo.
+   */
+  private bottomBarTop(): number | null {
+    const bar = document.querySelector<HTMLElement>(".moworld-bar");
+    if (!bar) return null;
+    const box = bar.getBoundingClientRect();
+    if (box.height <= 0) return null;
+    const tops = [...bar.children]
+      .filter((c) => getComputedStyle(c).position !== "fixed")
+      .map((c) => c.getBoundingClientRect())
+      .filter((r) => r.height > 0 && r.width > 0)
+      .map((r) => r.top);
+    if (tops.length === 0) return box.top;
+    // A borda/preenchimento da barra fica uns pixels acima do conteúdo.
+    return Math.max(box.top, Math.min(...tops) - 10);
+  }
+
   private frame() {
     const g = this.uiState?.ghostStructure ?? null;
     const mode = g !== null && NUKES.has(g) ? g : null;
@@ -76,8 +97,8 @@ export class NukeBatchBar extends LitElement implements Controller {
     }
     if (this.mode === null) return;
     let top = window.innerHeight - 110;
-    const r = document.querySelector(".moworld-bar")?.getBoundingClientRect();
-    if (r && r.height > 0) top = Math.min(top, r.top);
+    const barTop = this.bottomBarTop();
+    if (barTop !== null) top = Math.min(top, barTop);
     const bottom = Math.max(8, window.innerHeight - top + 8);
     if (bottom !== this.bottomPx) this.bottomPx = bottom;
     // Marcadores seguem o mapa (arrastar/zoom) a cada quadro.
