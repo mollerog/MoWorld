@@ -369,7 +369,11 @@ export class EngineConfig extends Config {
           ) {
             return 0n;
           }
-          return 25_000_000n + BigInt(game.mirvsLaunched()) * 15_000_000n;
+          // MoWorld: o preço dobra a cada MIRV que o próprio jogador lançou
+          // (25M, 50M, 100M, ...), em vez de subir 15M por MIRV de qualquer um.
+          return (
+            25_000_000n * 2n ** BigInt(player.unitsConstructed(UnitType.MIRV))
+          );
         };
       case UnitType.MissileSilo:
         return this.costWrapper(() => 1_000_000, UnitType.MissileSilo);

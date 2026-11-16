@@ -188,6 +188,8 @@ export class PlayerImpl implements Player {
   private relations = new Map<Player, number>();
 
   private lastDeleteUnitTick: Tick = -1;
+  /** MoWorld: tick do último MIRV lançado (recarga de 5 minutos). */
+  private lastMirvTick: Tick | null = null;
   private lastEmbargoAllTick: Tick = -1;
 
   public _incomingAttacks: Attack[] = [];
@@ -1422,6 +1424,7 @@ export class PlayerImpl implements Player {
     this._units.push(b);
     this._myUnitsVersion++;
     this.recordUnitConstructed(type);
+    if (type === UnitType.MIRV) this.lastMirvTick = this.mg.ticks();
     this.removeGold(cost);
     this.removeTroops("troops" in params ? (params.troops ?? 0) : 0);
     this.mg.addUpdate(b.toUpdate());
@@ -1470,7 +1473,18 @@ export class PlayerImpl implements Player {
     if (unitType !== UnitType.MIRVWarhead && !this.isAlive()) {
       return false;
     }
+    if (unitType === UnitType.MIRV && this.mirvCooldownTicks() > 0) {
+      return false;
+    }
     return true;
+  }
+
+  /** MoWorld: ticks até poder lançar outro MIRV (0 = pode). */
+  mirvCooldownTicks(): number {
+    if (this.lastMirvTick === null) return 0;
+    const left =
+      this.lastMirvTick + this.mg.config().mirvCooldown() - this.mg.ticks();
+    return Math.max(0, left);
   }
 
   private canUpgradeUnitType(unitType: UnitType): boolean {
@@ -1578,6 +1592,9 @@ export class PlayerImpl implements Player {
         ghostRailPaths: buildNew
           ? rail.computeGhostRailPaths(u, canBuild as TileRef)
           : [],
+        ...(u === UnitType.MIRV && this.mirvCooldownTicks() > 0
+          ? { cooldownTicks: this.mirvCooldownTicks() }
+          : {}),
       };
     }
 
@@ -2034,6 +2051,7 @@ export class PlayerImpl implements Player {
       numUnitsConstructed: Object.entries(this.numUnitsConstructed).map(
         ([type, n]) => [type as UnitType, n],
       ),
+      lastMirvTick: this.lastMirvTick,
     };
   }
 
@@ -2107,6 +2125,8 @@ export class PlayerImpl implements Player {
         }
       : (box as null);
     this.numUnitsConstructed = Object.fromEntries(s.numUnitsConstructed);
+    // Saves de antes da recarga do MIRV não têm o campo.
+    this.lastMirvTick = s.lastMirvTick ?? null;
     this.nearbyMemo = null;
   }
 }
@@ -2177,6 +2197,7 @@ export const PlayerSnapshot = snapshotType({
       .nullable()
       .optional(),
     numUnitsConstructed: z.array(z.tuple([UnitTypeSchema, zInt()])),
+    lastMirvTick: zInt().nullable().optional(),
   }),
 });
 export type PlayerState = z.infer<typeof PlayerSnapshot.schema>;

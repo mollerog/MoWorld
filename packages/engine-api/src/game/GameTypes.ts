@@ -359,6 +359,8 @@ export interface BuildableUnit {
   upgradeCosts?: Gold[];
   overlappingRailroads: TileRef[];
   ghostRailPaths: TileRef[][];
+  // MoWorld: ticks que faltam para poder lançar de novo (só MIRV, > 0).
+  cooldownTicks?: number;
 }
 
 // Total price of buying `amount` of a buildable in one intent. Upgrades use

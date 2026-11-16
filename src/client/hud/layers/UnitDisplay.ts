@@ -549,6 +549,21 @@ export class UnitDisplay extends LitElement implements Controller {
     return 0n;
   }
 
+  /** MoWorld: ticks de recarga do MIRV (0 = pode lançar). */
+  private cooldownTicks(item: UnitType): number {
+    for (const bu of this.playerBuildables ?? []) {
+      if (bu.type === item) return bu.cooldownTicks ?? 0;
+    }
+    return 0;
+  }
+
+  private cooldownLabel(item: UnitType): string | null {
+    const ticks = this.cooldownTicks(item);
+    if (ticks <= 0) return null;
+    const secs = Math.ceil(ticks / 10);
+    return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  }
+
   private canAfford(item: UnitType): boolean {
     return this.cost(item) <= (this.game?.myPlayer()?.gold() ?? 0n);
   }
@@ -562,7 +577,8 @@ export class UnitDisplay extends LitElement implements Controller {
       case UnitType.MIRV:
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
-          (player?.units(UnitType.MissileSilo).length ?? 0) > 0
+          (player?.units(UnitType.MissileSilo).length ?? 0) > 0 &&
+          this.cooldownTicks(item) === 0
         );
       case UnitType.Warship:
         return (
@@ -854,12 +870,21 @@ export class UnitDisplay extends LitElement implements Controller {
                   >`
                 : null
             }
-            <!-- MoWorld: preço embaixo do ícone (vermelho se faltar ouro) -->
+            <!-- MoWorld: preço embaixo do ícone (vermelho se faltar ouro);
+                 no MIRV em recarga, o tempo que falta. -->
             <span
               class="hidden text-[11px] font-extrabold tabular-nums leading-none mw-unit-cost ${
-                this.canAfford(unitType) ? "text-slate-300" : "text-red-400"
+                this.cooldownLabel(unitType) !== null
+                  ? "text-amber-300"
+                  : this.canAfford(unitType)
+                    ? "text-slate-300"
+                    : "text-red-400"
               }"
-              >${renderNumber(this.cost(unitType))}</span
+              >${
+                this.cooldownLabel(unitType) !== null
+                  ? `⏳${this.cooldownLabel(unitType)}`
+                  : renderNumber(this.cost(unitType))
+              }</span
             >
           </div>
         </div>
@@ -922,6 +947,20 @@ export class UnitDisplay extends LitElement implements Controller {
                 class="mt-1 px-2 py-1 text-[10px] text-cyan-300 border-t border-white/10"
               >
                 ⇧ ${translateText("build_menu.warship_shift_hint")}
+              </div>`
+            : null
+        }
+        ${
+          this.cooldownLabel(tooltip.unitType) !== null
+            ? html`<div class="text-amber-300 font-bold">
+                ⏳ Recarga: ${this.cooldownLabel(tooltip.unitType)}
+              </div>`
+            : null
+        }
+        ${
+          tooltip.unitType === UnitType.MIRV
+            ? html`<div class="text-[10px] text-slate-400 px-2">
+                Um a cada 5 min · o preço dobra a cada lançamento
               </div>`
             : null
         }

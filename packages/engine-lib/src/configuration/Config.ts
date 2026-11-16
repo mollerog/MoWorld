@@ -276,6 +276,11 @@ export class Config {
     return 30 * 10;
   }
 
+  /** MoWorld: espera entre dois MIRVs do mesmo jogador (5 minutos). */
+  mirvCooldown(): Tick {
+    return 5 * 60 * 10;
+  }
+
   deleteUnitCooldown(): Tick {
     return 30 * 10;
   }
