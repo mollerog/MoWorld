@@ -52,7 +52,23 @@ interface InboundMissileGroup {
   /** Translation key for two or more bombs. */
   countKey: string;
   units: UnitView[];
+  /** MoWorld: bombas desta linha desde que ela abriu (as que já caíram também). */
+  launched: number;
+  /** MoWorld: tick em que a última bomba caiu (a linha fica mais um tempo). */
+  landedAt?: number;
 }
+
+/**
+ * MoWorld: aviso de bomba fica na tela enquanto alguma bomba voa (antes saía
+ * em 8 s, às vezes com a bomba ainda no ar) e mais 30 s depois que a última
+ * cai, dizendo quem lançou.
+ */
+const MISSILE_LANDED_KEEP_TICKS = 300;
+const MISSILE_LANDED_KEYS: Readonly<Record<string, string>> = {
+  "events_display.atom_bomb_inbound": "events_display.atom_bomb_landed",
+  "events_display.hydrogen_bomb_inbound": "events_display.hydrogen_bomb_landed",
+  "events_display.mirv_inbound": "events_display.mirv_landed",
+};
 
 // Missile warnings get one line per sender and bomb type, with a count,
 // instead of one line per bomb. Maps each single-bomb key to its count key.
@@ -243,7 +259,7 @@ export class EventsDisplay extends LitElement implements Controller {
       // viewer seeked back past it.
       const expired = age >= 80 || age < 0;
       if (event.missileGroup) {
-        return this.keepMissileGroup(event, expired);
+        return this.keepMissileGroup(event, age < 0);
       }
       const isInboundWarning =
         event.type === MessageType.NUKE_INBOUND ||
@@ -280,18 +296,35 @@ export class EventsDisplay extends LitElement implements Controller {
 
   // Drops bombs that landed or were shot down and refreshes the count.
   // The line goes away once none are left, or when it expires.
-  private keepMissileGroup(event: GameEvent, expired: boolean): boolean {
+  private keepMissileGroup(event: GameEvent, seekedBack: boolean): boolean {
     const group = event.missileGroup!;
     const before = group.units.length;
     group.units = group.units.filter((unit) => unit.isActive());
-    const keep = !expired && group.units.length > 0;
+    const now = this.game.ticks();
+    let keep = !seekedBack;
+    if (keep && group.units.length > 0) {
+      // Ainda tem bomba no ar: fica, sem prazo.
+      if (group.units.length !== before) {
+        event.unitView = group.units[0];
+        event.description = this.missileGroupDescription(group);
+      }
+      return true;
+    }
+    if (keep) {
+      // Todas caíram: vira "fulano lançou N em você" por mais 30 s.
+      if (group.landedAt === undefined || group.landedAt > now) {
+        group.landedAt = now;
+        event.description = translateText(
+          MISSILE_LANDED_KEYS[group.messageKey] ?? group.messageKey,
+          { name: group.senderName, count: group.launched },
+        );
+        this.events = [...this.events];
+      }
+      keep = now - group.landedAt < MISSILE_LANDED_KEEP_TICKS;
+    }
     if (!keep) {
       event.onDelete?.();
       return false;
-    }
-    if (group.units.length !== before) {
-      event.unitView = group.units[0];
-      event.description = this.missileGroupDescription(group);
     }
     return true;
   }
@@ -324,7 +357,11 @@ export class EventsDisplay extends LitElement implements Controller {
       const group = existing.missileGroup!;
       if (!group.units.some((unit) => unit.id() === unitView.id())) {
         group.units.push(unitView);
+        group.launched++;
       }
+      // Bomba nova numa linha que já dizia "lançou": volta a "a caminho".
+      group.landedAt = undefined;
+      existing.unitView = group.units[0];
       existing.description = this.missileGroupDescription(group);
       // Each new bomb restarts the timer, so the line stays up while
       // bombs keep coming.
@@ -340,6 +377,7 @@ export class EventsDisplay extends LitElement implements Controller {
       messageKey,
       countKey,
       units: [unitView],
+      launched: 1,
     };
     this.addEvent({
       description: this.missileGroupDescription(group),

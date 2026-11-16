@@ -180,8 +180,7 @@ describe("EventsDisplay handlers", () => {
       expect(button.values).toContain("jump to player");
       expect(button.values).toContain("text-left");
       const handler = button.values.find((v) => typeof v === "function") as
-        | (() => void)
-        | undefined;
+        (() => void) | undefined;
       expect(handler).toBe(onClick);
     });
 
@@ -449,31 +448,51 @@ describe("EventsDisplay handlers", () => {
       ]);
     });
 
-    it("removes the line once every bomb is gone", () => {
+    // MoWorld: quando todas caem, a linha vira "fulano lançou N em você"
+    // e fica mais 30 s (300 ticks) antes de sumir.
+    it("keeps who launched for 30 s after every bomb is gone", () => {
       launch(10);
       launch(11);
 
       units[10].active = false;
       units[11].active = false;
       ed.tick();
+      expect(descriptions()).toEqual([
+        'events_display.atom_bomb_landed {"name":"Stranger","count":2}',
+      ]);
 
+      now = 299;
+      ed.tick();
+      expect(events()).toHaveLength(1);
+
+      now = 300;
+      ed.tick();
       expect(events()).toHaveLength(0);
     });
 
-    it("restarts the timer when another bomb joins the line", () => {
+    // MoWorld: enquanto há bomba no ar a linha não expira.
+    it("stays while a bomb is still flying, however long", () => {
       launch(10);
       now = 60;
       launch(11);
-      now = 100;
+      now = 1000;
       ed.tick();
 
       expect(descriptions()).toEqual([
         'events_display.atom_bomb_inbound_count {"name":"Stranger","count":2}',
       ]);
+    });
 
-      now = 140;
+    it("goes back to inbound when a new bomb joins a landed line", () => {
+      launch(10);
+      units[10].active = false;
       ed.tick();
-      expect(events()).toHaveLength(0);
+      now = 50;
+      launch(11);
+      ed.tick();
+      expect(descriptions()).toEqual([
+        'events_display.atom_bomb_inbound {"name":"Stranger"}',
+      ]);
     });
 
     it("counts the same bomb only once", () => {
