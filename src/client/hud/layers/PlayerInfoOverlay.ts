@@ -244,8 +244,10 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
       this.refreshPlayerActions(this.player, tile);
       this.setVisible(true);
     } else if (!this.game.isLand(tile)) {
+      // MoWorld: navio de troca (economia) não é selecionável — tocar perto
+      // dele no mar não mostra nada.
       const units = this.game
-        .units(UnitType.Warship, UnitType.TradeShip, UnitType.TransportShip)
+        .units(UnitType.Warship, UnitType.TransportShip)
         .filter((u) => euclideanDistWorld(worldCoord, u.tile(), this.game) < 50)
         .sort(distSortUnitWorld(worldCoord, this.game));
 
@@ -887,17 +889,25 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
           ${unit.owner().displayName()}
         </div>
         <div class="mt-1">
-          <div class="text-sm opacity-80">${unit.type()}</div>
+          <div class="text-sm opacity-80">
+            ${
+              unit.type() === UnitType.Warship
+                ? "Navio de guerra"
+                : unit.type() === UnitType.TransportShip
+                  ? "Barco de transporte"
+                  : unit.type()
+            }
+          </div>
           ${
             unit.hasHealth()
-              ? html` <div class="text-sm">Health: ${unit.health()}</div> `
+              ? html` <div class="text-sm">Vida: ${unit.health()}</div> `
               : ""
           }
           ${
             unit.type() === UnitType.TransportShip
               ? html`
                   <div class="text-sm">
-                    Troops: ${renderTroops(unit.troops())}
+                    Tropas: ${renderTroops(unit.troops())}
                   </div>
                 `
               : ""

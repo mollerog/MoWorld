@@ -58,9 +58,9 @@ export class HoverHighlightController implements Controller {
       // Avoid square root for performance; 50 tile radius = 2500 tiles²
       let closestUnit: UnitView | null = null;
       let closestDistSquared = 2500;
+      // MoWorld: navio de troca não destaca o dono (não é selecionável).
       for (const u of this.game.units(
         UnitType.Warship,
-        UnitType.TradeShip,
         UnitType.TransportShip,
       )) {
         const distSquared = this.game.euclideanDistSquared(ref, u.tile());
