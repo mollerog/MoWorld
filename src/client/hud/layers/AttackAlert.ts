@@ -85,7 +85,7 @@ export class AttackAlert extends LitElement implements Controller {
     return html`
       <button
         type="button"
-        class="mw-headsup mw-attack-alert fixed top-[15%] left-1/2 -translate-x-1/2 z-[800] flex items-center gap-2 rounded-xl border border-red-400/60 bg-red-950/90 px-3 py-2 text-left text-white shadow-[0_6px_18px_rgb(0_0_0/0.5)] backdrop-blur-md ring-2 ring-red-500/40"
+        class="mw-headsup mw-attack-alert pointer-events-auto fixed top-[15%] left-1/2 -translate-x-1/2 z-[800] flex items-center gap-2 rounded-xl border border-red-400/60 bg-red-950/90 px-3 py-2 text-left text-white shadow-[0_6px_18px_rgb(0_0_0/0.5)] backdrop-blur-md ring-2 ring-red-500/40"
         data-moworld-attack-alert
         @click=${() => this.goTo(a)}
       >
