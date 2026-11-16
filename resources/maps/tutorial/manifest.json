@@ -22,12 +22,12 @@
     {
       "coordinates": [38, 49],
       "flag": "",
-      "name": "Iron Kingdom"
+      "name": "Reino de Ferro"
     },
     {
       "coordinates": [175, 84],
       "flag": "",
-      "name": "Red Empire"
+      "name": "Império Vermelho"
     }
   ],
   "translation_key": "map.tutorial"

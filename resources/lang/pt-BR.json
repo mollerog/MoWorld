@@ -1245,7 +1245,8 @@
     "ui_wilderness": "Terra inóspita",
     "ui_your_team": "Seu Time:",
     "video_tutorial": "Vídeo tutorial",
-    "video_tutorial_title": "MoWorld Tutorial"
+    "video_tutorial_title": "MoWorld Tutorial",
+    "action_player_panel": "Abrir o painel do jogador"
   },
   "host_modal": {
     "anonymous_players": "Jogadores Anônimos",
@@ -2733,5 +2734,40 @@
     "you_won": "Você Venceu!",
     "your_team": "Sua Equipe Venceu!",
     "youtube_tutorial": "Precisa de ajuda?"
+  },
+  "onboarding": {
+    "got_it": "Entendi",
+    "intro_body": "MoWorld é um jogo de estratégia: aumente seu território e conquiste os vizinhos até dominar o mapa.",
+    "intro_start": "Começar",
+    "intro_title": "Bem-vindo ao MoWorld",
+    "low_troops": "Espere suas tropas crescerem antes de atacar de novo.",
+    "low_troops_title": "Suas tropas estão baixas!",
+    "main_menu": "Menu principal",
+    "play_solo": "Jogar uma partida solo",
+    "step": {
+      "coast": "Continue clicando na terra livre até seu território chegar ao mar.",
+      "coast_touch": "Continue tocando na terra livre até seu território chegar ao mar.",
+      "empire": "Último: o Império Vermelho. Clique no litoral dele para mandar barcos até ele cair.",
+      "empire_land": "Agora clique na terra dele e continue até ele cair.",
+      "empire_land_touch": "Agora toque na terra dele e continue até ele cair.",
+      "empire_touch": "Último: o Império Vermelho. Toque no litoral dele para mandar barcos até ele cair.",
+      "expand": "Este é o seu território. Clique na terra livre ao lado para crescer.",
+      "expand_touch": "Este é o seu território. Toque na terra livre ao lado para crescer.",
+      "kingdom": "Esse é o Reino de Ferro, e ele está te bombardeando com o silo de mísseis! Clique na terra dele para atacar e continue até ele cair.",
+      "kingdom_touch": "Esse é o Reino de Ferro, e ele está te bombardeando com o silo de mísseis! Toque na terra dele para atacar e continue até ele cair.",
+      "nuke": "O silo agora é seu! Clique na bomba atômica na barra de construção.",
+      "nuke_aim": "Agora clique no porto do Império Vermelho e no navio de guerra ao lado para marcar os dois, e aperte LANÇAR.",
+      "nuke_aim_touch": "Agora toque no porto do Império Vermelho e no navio de guerra ao lado para marcar os dois, e aperte LANÇAR.",
+      "nuke_reload": "O silo está recarregando. Prepare-se…",
+      "nuke_touch": "O silo agora é seu! Toque na bomba atômica na barra de construção.",
+      "spawn": "Clique dentro do círculo brilhante para escolher onde começar.",
+      "spawn_touch": "Toque dentro do círculo brilhante para escolher onde começar.",
+      "troops": "Esta barra é o seu exército. Ele cresce mais rápido quando está pela metade: não deixe ficar cheio demais nem vazio demais.",
+      "wrong_target": "Aí não. Clique onde a seta aponta.",
+      "wrong_target_touch": "Aí não. Toque onde a seta aponta."
+    },
+    "step_counter": "Passo {current} de {total}",
+    "won_body": "Você aprendeu o básico. Na partida de verdade, o primeiro toque num alvo mostra a força dele e o segundo ataca. Um guia rápido mostra construções, alianças, bombas e mais.",
+    "won_title": "Você venceu!"
   }
 }

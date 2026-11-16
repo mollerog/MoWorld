@@ -1,3 +1,4 @@
+import { cards } from "./components/GestureGuide";
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { html } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
@@ -149,60 +150,35 @@ export class HelpModal extends BaseModal {
             </button>
           </section>
 
-          <!-- Video Tutorial Section -->
+          <!-- MoWorld: como jogar (os mesmos cartões do guia da partida) -->
           <div class="flex items-center gap-3 mb-3">
-            <div class="text-blue-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-              </svg>
-            </div>
+            <div class="text-blue-400 text-xl leading-none">🎮</div>
             <h3
               class="text-xl font-bold uppercase tracking-widest text-white/90"
             >
-              ${translateText("help_modal.video_tutorial")}
+              Como jogar
             </h3>
             <div
               class="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"
             ></div>
           </div>
-          <section
-            class="bg-white/5 rounded-xl border border-white/10 overflow-hidden mb-8"
-          >
-            <div class="relative w-full h-0 pb-[56.25%]">
-              ${
-                Platform.isElectron
-                  ? html`<video
-                      id="tutorial-video-player"
-                      class="absolute top-0 left-0 w-full h-full"
-                      src="${DESKTOP_TUTORIAL_VIDEO_URL}"
-                      title="${translateText(
-                        "help_modal.video_tutorial_title",
-                      )}"
-                      controls
-                      preload="metadata"
-                    ></video>`
-                  : html`<iframe
-                      id="tutorial-video-iframe"
-                      class="absolute top-0 left-0 w-full h-full"
-                      src="${this.isModalOpen ? TUTORIAL_VIDEO_URL : ""}"
-                      title="${translateText(
-                        "help_modal.video_tutorial_title",
-                      )}"
-                      frameborder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowfullscreen
-                    ></iframe>`
-              }
-            </div>
+          <section class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+            ${cards(Platform.isTouch).map(
+              (c) =>
+                html`<div
+                  class="bg-white/5 rounded-xl border border-white/10 px-4 py-3"
+                >
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-2xl leading-none">${c.icon}</span>
+                    <span class="text-base font-bold text-white"
+                      >${c.title}</span
+                    >
+                  </div>
+                  <ul class="!my-0 !ps-4 text-sm">
+                    ${c.lines.map((l) => html`<li>${l}</li>`)}
+                  </ul>
+                </div>`,
+            )}
           </section>
 
           <!-- Troubleshooting Section -->
@@ -575,174 +551,44 @@ export class HelpModal extends BaseModal {
             </div>
           </section>
 
-          <!-- UI Interface Section -->
+          <!-- MoWorld: interface da partida (texto; as imagens antigas eram
+               da interface original) -->
           <section class="mb-8 mt-8">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="text-blue-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="3" y1="9" x2="21" y2="9"></line>
-                  <line x1="9" y1="21" x2="9" y2="9"></line>
-                </svg>
+            <div class="flex items-center gap-3 mb-3">
+            <div class="text-blue-400 text-xl leading-none">🖥</div>
+            <h3
+              class="text-xl font-bold uppercase tracking-widest text-white/90"
+            >
+              Interface da partida
+            </h3>
+            <div
+              class="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"
+            ></div>
+          </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">📊 Card de status (topo)</div>
+                <p class="!mb-0 text-sm text-white/70">Tempo de proteção ou contagem para começar, sua posição e % do mapa, a linha de progresso até a META de 80% e quem está em 1º/2º.</p>
               </div>
-              <h3
-                class="text-xl font-bold uppercase tracking-widest text-white/90"
-              >
-                ${translateText("help_modal.ui_section")}
-              </h3>
-              <div
-                class="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"
-              ></div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-6">
-              <!-- Leaderboard -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3 shrink-0">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.ui_leaderboard")}</span
-                  >
-                  <img
-                    src=${assetUrl("images/helpModal/leaderboard2.webp")}
-                    alt="Leaderboard"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                    loading="lazy"
-                  />
-                </div>
-                <div
-                  class="flex items-center text-white/70 text-sm leading-relaxed"
-                >
-                  <p>${translateText("help_modal.ui_leaderboard_desc")}</p>
-                </div>
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">🏆 Painel da esquerda</div>
+                <p class="!mb-0 text-sm text-white/70">Placar das maiores nações, troca de visão do mapa (V) e 🎯 para voltar a câmera ao seu território.</p>
               </div>
-
-              <!-- Control Panel -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3 shrink-0">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.ui_control")}</span
-                  >
-                  <img
-                    src=${assetUrl("images/helpModal/controlPanel.webp")}
-                    alt="Control Panel"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                    loading="lazy"
-                  />
-                </div>
-                <div class="flex flex-col justify-center text-white/70 text-sm">
-                  <p class="mb-4 leading-relaxed">
-                    ${translateText("help_modal.ui_control_desc")}
-                  </p>
-                  <ul class="space-y-2 list-disc ps-4 text-white/60">
-                    <li>${translateText("help_modal.ui_gold")}</li>
-                    <li>${translateText("help_modal.ui_attack_ratio")}</li>
-                  </ul>
-                </div>
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">⏱ Painel da direita</div>
+                <p class="!mb-0 text-sm text-white/70">Tempo de jogo, acelerar ⏩, pausar ⏸ (Espaço), configurações ⚙, tela cheia e sair. No celular deitado o tempo fica dentro do card de status.</p>
               </div>
-
-              <!-- Events Panel -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3 shrink-0">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.ui_events")}</span
-                  >
-                  <div class="flex flex-col gap-2">
-                    <img
-                      src=${assetUrl("images/helpModal/eventsPanel.webp")}
-                      alt="Events"
-                      class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                      loading="lazy"
-                    />
-                    <img
-                      src=${assetUrl("images/helpModal/eventsPanelAttack.webp")}
-                      alt="Events Attack"
-                      class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                      loading="lazy"
-                    />
-                  </div>
-                </div>
-                <div class="flex flex-col justify-center text-white/70 text-sm">
-                  <p class="mb-4 leading-relaxed">
-                    ${translateText("help_modal.ui_events_desc")}
-                  </p>
-                  <ul class="space-y-2 list-disc ps-4 text-white/60">
-                    <li>${translateText("help_modal.ui_events_alliance")}</li>
-                    <li>${translateText("help_modal.ui_events_attack")}</li>
-                    <li>${translateText("help_modal.ui_events_quickchat")}</li>
-                  </ul>
-                </div>
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">🪖 Barra de baixo</div>
+                <p class="!mb-0 text-sm text-white/70">Suas tropas (e quanto crescem por segundo), a % de ataque (10 a 100%), o ouro e os botões de construção com o preço de cada um.</p>
               </div>
-
-              <!-- Options -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3 shrink-0">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.ui_options")}</span
-                  >
-                  <img
-                    src=${assetUrl("images/helpModal/options2.webp")}
-                    alt="Options"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                    loading="lazy"
-                  />
-                </div>
-                <div class="flex flex-col justify-center text-white/70 text-sm">
-                  <p class="mb-4 leading-relaxed">
-                    ${translateText("help_modal.ui_options_desc")}
-                  </p>
-                  <ul class="space-y-2 list-disc ps-4 text-white/60">
-                    <li>${translateText("help_modal.option_timer")}</li>
-                    <li>${translateText("help_modal.option_speed")}</li>
-                    <li>${translateText("help_modal.option_pause")}</li>
-                    <li>${translateText("help_modal.option_settings")}</li>
-                    <li>${translateText("help_modal.option_exit")}</li>
-                  </ul>
-                </div>
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">🎯 Cartão do alvo</div>
+                <p class="!mb-0 text-sm text-white/70">Aparece no canto de cima ao tocar/clicar numa nação, tribo ou terra livre: tropas dela, quanto você envia e se o ataque é forte, equilibrado ou fraco. Em aliados mostra Doar tropas e Doar ouro.</p>
               </div>
-
-              <!-- Player Overlay -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3 shrink-0">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.ui_playeroverlay")}</span
-                  >
-                  <img
-                    src=${assetUrl("images/helpModal/playerInfoOverlay.webp")}
-                    alt="Player Info"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                    loading="lazy"
-                  />
-                </div>
-                <div
-                  class="flex items-center text-white/70 text-sm leading-relaxed"
-                >
-                  <p>${translateText("help_modal.ui_playeroverlay_desc")}</p>
-                </div>
+              <div class="bg-black/20 rounded-xl border border-white/10 px-4 py-3">
+                <div class="text-sm font-bold text-white mb-1">⚠ Avisos</div>
+                <p class="!mb-0 text-sm text-white/70">Vermelho no topo = ataque contra você (toque para ver onde). Mensagens de eventos (alianças, conquistas, ouro recebido) aparecem no canto.</p>
               </div>
             </div>
           </section>
@@ -779,20 +625,6 @@ export class HelpModal extends BaseModal {
             <div
               class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col md:flex-row gap-6 hover:bg-white/5 transition-colors"
             >
-              <div class="flex flex-col gap-4 shrink-0">
-                <img
-                  src=${assetUrl("images/helpModal/radialMenu2.webp")}
-                  alt="Radial Menu"
-                  class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                  loading="lazy"
-                />
-                <img
-                  src=${assetUrl("images/helpModal/radialMenuAlly.webp")}
-                  alt="Radial Menu Ally"
-                  class="rounded-lg shadow-lg border border-white/20 max-w-[200px]"
-                  loading="lazy"
-                />
-              </div>
               <div class="text-white/70 text-sm">
                 <p class="mb-4 leading-relaxed">
                   ${translateText("help_modal.radial_desc")}
@@ -896,12 +728,6 @@ export class HelpModal extends BaseModal {
                     class="text-xs font-bold uppercase tracking-wider text-blue-300"
                     >${translateText("help_modal.info_enemy_panel")}</span
                   >
-                  <img
-                    src=${assetUrl("images/helpModal/infoMenu2.webp")}
-                    alt="Enemy Info"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[240px]"
-                    loading="lazy"
-                  />
                 </div>
                 <div class="text-white/70 text-sm">
                   <p class="mb-4 leading-relaxed">
@@ -957,12 +783,6 @@ export class HelpModal extends BaseModal {
                     class="text-xs font-bold uppercase tracking-wider text-blue-300"
                     >${translateText("help_modal.info_ally_panel")}</span
                   >
-                  <img
-                    src=${assetUrl("images/helpModal/infoMenu2Ally.webp")}
-                    alt="Ally Info"
-                    class="rounded-lg shadow-lg border border-white/20 max-w-[240px]"
-                    loading="lazy"
-                  />
                 </div>
                 <div class="text-white/70 text-sm">
                   <p class="mb-4 leading-relaxed">

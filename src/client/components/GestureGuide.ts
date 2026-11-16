@@ -6,9 +6,9 @@ import { customElement, state } from "lit/decorators.js";
 
 const SEEN_KEY = "moworld-guide-seen";
 
-type Card = { icon: string; title: string; lines: string[] };
+export type Card = { icon: string; title: string; lines: string[] };
 
-function cards(touch: boolean): Card[] {
+export function cards(touch: boolean): Card[] {
   const tap = touch ? "Toque" : "Clique";
   const tapL = touch ? "toque" : "clique";
   const hold = touch ? "Segure o dedo" : "Clique com o botão direito";

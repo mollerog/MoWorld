@@ -2230,8 +2230,8 @@
       "kingdom": "That's the Iron Kingdom, and it's nuking you from its missile silo! Click its land to attack, and keep going until it falls.",
       "kingdom_touch": "That's the Iron Kingdom, and it's nuking you from its missile silo! Tap its land to attack, and keep going until it falls.",
       "nuke": "The silo is yours! Click the atom bomb at the bottom of the screen.",
-      "nuke_aim": "Now click the Red Empire's port to nuke it, and the warship beside it.",
-      "nuke_aim_touch": "Now tap the Red Empire's port to nuke it, and the warship beside it.",
+      "nuke_aim": "Now click the Red Empire's port and the warship beside it to mark them, then press LAUNCH to nuke both.",
+      "nuke_aim_touch": "Now tap the Red Empire's port and the warship beside it to mark them, then press LAUNCH to nuke both.",
       "nuke_reload": "The silo is reloading. Get ready…",
       "nuke_touch": "The silo is yours! Tap the atom bomb at the bottom of the screen.",
       "spawn": "Click inside the glowing circle to choose where you start.",
@@ -2241,7 +2241,7 @@
       "wrong_target_touch": "Not there. Tap where the arrow points."
     },
     "step_counter": "Step {current} of {total}",
-    "won_body": "You know the basics. Now try a real game: a guide will show you buildings, alliances, nukes and more.",
+    "won_body": "You know the basics. In a real game, the first tap on a target shows its strength and the second tap attacks. A quick guide will show buildings, alliances, nukes and more.",
     "won_title": "You won!"
   },
   "overtime": {
