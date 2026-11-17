@@ -1,9 +1,14 @@
 // MoWorld: atacar por dentro do território de um aliado quem faz fronteira
 // com ele e não comigo.
-import { PlayerInfo, PlayerType } from "@openfront/engine-api/game/GameTypes";
+import {
+  PlayerInfo,
+  PlayerType,
+  UnitType,
+} from "@openfront/engine-api/game/GameTypes";
 import { AttackExecution } from "@openfront/engine/execution/AttackExecution";
 import { Game, Player } from "@openfront/engine/game/Game";
 import { setup } from "./util/Setup";
+import { expectSnapshotRoundTrip } from "./util/Snapshot";
 import { executeTicks } from "./util/utils";
 
 let game: Game;
@@ -69,18 +74,54 @@ describe("MoWorld passagem por aliado", () => {
     expect(ally.canAttack(game.ref(5, 20))).toBe(true);
   });
 
-  test("quebrou a aliança no meio: para de avançar pelo ex-aliado", () => {
+  test("as tropas marcham pelo aliado e só atacam quando chegam", () => {
+    me.createAllianceRequest(ally)?.accept();
+    const before = enemy.numTilesOwned();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 2);
+    const armies = me.units(UnitType.Army);
+    expect(armies).toHaveLength(1);
+    expect(armies[0].troops()).toBe(20_000);
+    // Ainda marchando: o inimigo não perdeu nada.
+    expect(enemy.numTilesOwned()).toBe(before);
+    executeTicks(game, 40);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(enemy.numTilesOwned()).toBeLessThan(before);
+  });
+
+  test("aliado rompeu no caminho: o ataque passa a ser nele", () => {
     me.createAllianceRequest(ally)?.accept();
     game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 4);
+    expect(me.units(UnitType.Army)).toHaveLength(1);
+    const enemyBefore = enemy.numTilesOwned();
+    ally.breakAlliance(ally.allianceWith(me)!);
+    executeTicks(game, 30);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(ally.numTilesOwned()).toBeLessThan(200);
+    expect(enemy.numTilesOwned()).toBe(enemyBefore);
+  });
+
+  test("alvo morreu no caminho: as tropas voltam", () => {
+    me.createAllianceRequest(ally)?.accept();
+    const troops = me.troops();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
     executeTicks(game, 3);
-    const alliance = me.allianceWith(ally)!;
-    me.breakAlliance(alliance);
-    const after = enemy.numTilesOwned();
-    executeTicks(game, 60);
-    // Pode terminar o que já está colado em mim, mas não abre frente nova
-    // pelo ex-aliado; no mínimo não piora o inimigo além do já conquistado
-    // de forma descontrolada.
-    expect(me.isAlliedWith(ally)).toBe(false);
-    expect(enemy.numTilesOwned()).toBeLessThanOrEqual(after);
+    expect(me.troops()).toBeLessThan(troops);
+    // O aliado toma tudo do alvo antes de o exército chegar.
+    for (let x = 20; x < 30; x++)
+      for (let y = 10; y < 30; y++) ally.conquer(game.ref(x, y));
+    expect(enemy.isAlive()).toBe(false);
+    executeTicks(game, 2);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(me.troops()).toBeGreaterThanOrEqual(troops - 1_000);
+  });
+
+  test("save no meio da marcha continua igual", async () => {
+    me.createAllianceRequest(ally)?.accept();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 4);
+    expect(me.units(UnitType.Army)).toHaveLength(1);
+    await expectSnapshotRoundTrip(game, "plains", 30);
   });
 });

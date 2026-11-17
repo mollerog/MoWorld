@@ -404,6 +404,7 @@ export class EngineConfig extends Config {
       case UnitType.MIRVWarhead:
       case UnitType.TradeShip:
       case UnitType.Train:
+      case UnitType.Army:
         return () => 0n;
       default:
         assertNever(type);

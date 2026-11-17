@@ -115,6 +115,12 @@ export interface UnitParamsMap {
   [UnitType.SAMLauncher]: Record<string, never>;
 
   [UnitType.City]: Record<string, never>;
+
+  // MoWorld: exército marchando pelo aliado.
+  [UnitType.Army]: {
+    troops?: number;
+    targetTile?: TileRef;
+  };
 }
 
 // Type helper to get params type for a specific unit type

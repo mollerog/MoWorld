@@ -47,6 +47,8 @@ export class AttacksDisplay extends LitElement implements Controller {
   @state() private outgoingAttacks: AttackUpdate[] = [];
   @state() private outgoingLandAttacks: AttackUpdate[] = [];
   @state() private outgoingBoats: UnitView[] = [];
+  /** MoWorld: tropas marchando pelo território de um aliado. */
+  @state() private outgoingArmies: UnitView[] = [];
   @state() private incomingBoats: UnitView[] = [];
 
   createRenderRoot() {
@@ -113,6 +115,9 @@ export class AttacksDisplay extends LitElement implements Controller {
     this.outgoingBoats = myPlayer
       .units()
       .filter((u) => u.type() === UnitType.TransportShip);
+    this.outgoingArmies = myPlayer
+      .units()
+      .filter((u) => u.type() === UnitType.Army);
 
     this.requestUpdate();
   }
@@ -425,6 +430,34 @@ export class AttacksDisplay extends LitElement implements Controller {
     );
   }
 
+  private renderArmies() {
+    if (this.outgoingArmies.length === 0) return html``;
+    return this.outgoingArmies.map(
+      (army) => html`
+        <div
+          class="flex items-center gap-0.5 w-full bg-gray-800/92 backdrop-blur-sm sm:rounded-lg px-1.5 py-0.5 overflow-hidden"
+        >
+          ${this.renderButton({
+            content: html`<span aria-hidden="true">🪖</span>
+              <span class="inline-block min-w-[3rem] text-right"
+                >${renderTroops(army.troops())}</span
+              >
+              <span class="truncate text-xs ml-1"
+                >${this.getBoatTargetName(army)}</span
+              >
+              <span class="text-xs ml-1 text-slate-300"
+                >${this.getBoatETA(army)}</span
+              >`,
+            onClick: () => this.eventBus.emit(new GoToUnitEvent(army)),
+            className:
+              "text-left text-amber-200 inline-flex items-center gap-0.5 lg:gap-1 min-w-0",
+            translate: false,
+          })}
+        </div>
+      `,
+    );
+  }
+
   private renderIncomingBoats() {
     if (this.incomingBoats.length === 0) return html``;
 
@@ -463,6 +496,7 @@ export class AttacksDisplay extends LitElement implements Controller {
       this.outgoingAttacks.length > 0 ||
       this.outgoingLandAttacks.length > 0 ||
       this.outgoingBoats.length > 0 ||
+      this.outgoingArmies.length > 0 ||
       this.incomingAttacks.length > 0 ||
       this.incomingBoats.length > 0;
 
@@ -475,8 +509,8 @@ export class AttacksDisplay extends LitElement implements Controller {
         class="w-full mb-1 mt-1 sm:mt-0 pointer-events-auto grid grid-cols-2 gap-1 text-white text-sm lg:text-base max-h-[7rem] overflow-y-auto"
       >
         ${this.renderOutgoingAttacks()} ${this.renderOutgoingLandAttacks()}
-        ${this.renderBoats()} ${this.renderIncomingAttacks()}
-        ${this.renderIncomingBoats()}
+        ${this.renderBoats()} ${this.renderArmies()}
+        ${this.renderIncomingAttacks()} ${this.renderIncomingBoats()}
       </div>
     `;
   }

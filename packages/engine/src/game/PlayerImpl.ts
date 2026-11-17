@@ -1705,6 +1705,9 @@ export class PlayerImpl implements Player {
         return this.tradeShipSpawn(targetTile);
       case UnitType.Train:
         return this.landBasedUnitSpawn(targetTile);
+      case UnitType.Army:
+        // Só nasce pela ArmyMarchExecution, que já escolheu o caminho.
+        return targetTile;
       case UnitType.MissileSilo:
       case UnitType.DefensePost:
       case UnitType.SAMLauncher:

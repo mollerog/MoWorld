@@ -55,5 +55,6 @@ export {
   UT_TRADE_SHIP,
   UT_TRAIN,
   UT_TRANSPORT,
+  UT_ARMY,
   UT_WARSHIP,
 } from "./UnitType";

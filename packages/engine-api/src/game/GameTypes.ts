@@ -211,6 +211,8 @@ export enum UnitType {
   MIRVWarhead = "MIRV Warhead",
   Train = "Train",
   Factory = "Factory",
+  // MoWorld: tropas marchando por terra pelo território de um aliado.
+  Army = "Army",
 }
 
 export enum TrainType {

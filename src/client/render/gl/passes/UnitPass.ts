@@ -46,6 +46,7 @@ import {
   UT_SHELL,
   UT_TRADE_SHIP,
   UT_TRAIN,
+  UT_ARMY,
   UT_TRANSPORT,
   UT_WARSHIP,
 } from "../../types";
@@ -82,6 +83,7 @@ const UNIT_ORDER = [
   UT_SAM_MISSILE,
   UT_SHELL,
   UT_MIRV_WARHEAD,
+  UT_ARMY, // MoWorld: antes dos trens (o shader trata colunas >= trem como trem)
   "TrainEngine",
   "TrainCarriage",
   "TrainCarriageLoaded",
