@@ -433,6 +433,15 @@ export interface Player extends PlayerLike {
   // Relations & Diplomacy
   nearby(): (Player | TerraNullius)[];
   sharesBorderWith(other: Player | TerraNullius): boolean;
+  /**
+   * MoWorld: aliados que fazem fronteira comigo e com o alvo — o exército
+   * passa por dentro deles para atacar quem não faz fronteira comigo.
+   */
+  passageAllies(target: Player): Player[];
+  /** MoWorld: fronteira direta ou passagem por um aliado. */
+  reachesByLand(target: Player): boolean;
+  /** MoWorld: tick da última doação (tropas ou ouro) para esse jogador. */
+  lastDonationTickTo(recipient: Player): number | null;
   relation(other: Player): Relation;
   allRelationsSorted(): { player: Player; relation: Relation }[];
   updateRelation(other: Player, delta: number): void;

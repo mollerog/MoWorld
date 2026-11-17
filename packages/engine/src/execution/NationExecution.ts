@@ -1,3 +1,4 @@
+import { maybeAidAllies } from "./nation/NationAllyAid";
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import {
   Difficulty,
@@ -263,6 +264,8 @@ export class NationExecution implements Execution {
     this.structureBehavior.handleStructures();
     this.warshipBehavior.maybeSpawnWarship();
     this.handleEmbargoesToHostileNations();
+    // MoWorld: aliado amigável ajuda o jogador com tropas/ouro (FFA).
+    maybeAidAllies(this.mg, this.player);
     this.attackBehavior.maybeAttack();
     this.warshipBehavior.counterWarshipInfestation();
     this.nukeBehavior.maybeSendNuke();

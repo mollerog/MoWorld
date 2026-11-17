@@ -53,6 +53,12 @@ export class AttackExecution implements Execution {
   // Reusable neighbor buffers to avoid closures/allocation in hot loops.
   private nbuf: TileRef[] = [0, 0, 0, 0];
   private nbuf2: TileRef[] = [0, 0, 0, 0];
+  /**
+   * MoWorld: aliados por cujo território o ataque passa (small ids), quando
+   * não faço fronteira com o alvo. Tiles do alvo vizinhos deles contam como
+   * frente de ataque.
+   */
+  private passage: number[] = [];
 
   constructor(
     private startTroops: number | null = null,
@@ -142,6 +148,16 @@ export class AttackExecution implements Execution {
       this.sourceTile,
       new Set<TileRef>(),
     );
+
+    if (
+      this.sourceTile === null &&
+      this.target.isPlayer() &&
+      !this._owner.sharesBorderWith(this.target)
+    ) {
+      this.passage = this._owner
+        .passageAllies(this.target)
+        .map((p) => p.smallID());
+    }
 
     if (this.sourceTile !== null) {
       this.addNeighbors(this.sourceTile);
@@ -233,6 +249,21 @@ export class AttackExecution implements Execution {
     this.attack.clearBorder();
     // forEach over the dense storage — the values() generator showed up in long-game profiles
     this._owner.borderTiles().forEach((tile) => this.addNeighbors(tile));
+    for (const id of this.passage) {
+      const ally = this.mg.playerBySmallID(id);
+      if (ally.isPlayer()) {
+        ally.borderTiles().forEach((tile) => this.addNeighbors(tile));
+      }
+    }
+  }
+
+  /** MoWorld: some com o aliado que deixou de ser aliado (ou morreu). */
+  private prunePassage() {
+    if (this.passage.length === 0) return;
+    this.passage = this.passage.filter((id) => {
+      const p = this.mg.playerBySmallID(id);
+      return p.isPlayer() && p.isAlive() && this._owner.isAlliedWith(p);
+    });
   }
 
   private retreat(malusPercent = 0) {
@@ -305,6 +336,7 @@ export class AttackExecution implements Execution {
       return;
     }
 
+    this.prunePassage();
     const borderSize = this.attack.borderSize() + this.random.nextInt(0, 5);
     // Each tile consumes a fraction of the tick; conquer until it is spent.
     let tickBudget = 1;
@@ -328,7 +360,8 @@ export class AttackExecution implements Execution {
       let onBorder = false;
       const numNeighbors = this.map.neighbors4(tileToConquer, this.nbuf);
       for (let i = 0; i < numNeighbors; i++) {
-        if (this.map.ownerID(this.nbuf[i]) === this.ownerSmallID) {
+        const id = this.map.ownerID(this.nbuf[i]);
+        if (id === this.ownerSmallID || this.passage.includes(id)) {
           onBorder = true;
           break;
         }
@@ -519,6 +552,7 @@ export class AttackExecution implements Execution {
       targetID: this._targetID,
       sourceTile: this.sourceTile,
       removeTroops: this.removeTroops,
+      passage: this.passage,
     });
   }
 
@@ -545,6 +579,7 @@ export class AttackExecution implements Execution {
     this._targetID = s.targetID;
     this.sourceTile = s.sourceTile;
     this.removeTroops = s.removeTroops;
+    this.passage = s.passage ?? [];
   }
 }
 
@@ -569,6 +604,8 @@ const AttackExecutionStateSchema = z.object({
   targetID: z.string().nullable(),
   sourceTile: zTile().nullable(),
   removeTroops: z.boolean(),
+  // MoWorld: saves antigos não têm.
+  passage: z.array(zInt()).optional(),
 });
 type AttackExecutionState = z.infer<typeof AttackExecutionStateSchema>;
 

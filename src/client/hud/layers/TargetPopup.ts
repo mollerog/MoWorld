@@ -245,6 +245,15 @@ export class TargetPopup extends LitElement implements Controller {
         if (seen.has(n)) continue;
         const o = g.owner(n);
         if (o.isPlayer() && o.id() === me.id()) return true;
+        // MoWorld: encosta num aliado → ataque por terra passando por ele
+        // (o jogo confere se o aliado faz fronteira com você).
+        if (
+          o.isPlayer() &&
+          o.id() !== ownerId &&
+          me.isAlliedWith(o as PlayerView)
+        ) {
+          return true;
+        }
         if (same(n)) {
           seen.add(n);
           queue.push(n);

@@ -98,7 +98,8 @@ export abstract class AiAttackBehavior {
     if (!force && !this.shouldAttack(target)) return false;
 
     if (target.isPlayer()) {
-      if (this.player.sharesBorderWith(target)) {
+      // MoWorld: por terra também passando por um aliado.
+      if (this.player.reachesByLand(target)) {
         return this.sendLandAttack(target);
       } else {
         return this.sendBoatAttack(target);

@@ -574,6 +574,22 @@ export class PlayerImpl implements Player {
     return total;
   }
 
+  passageAllies(target: Player): Player[] {
+    if (target === this) return [];
+    return this.allies().filter(
+      (ally) =>
+        ally !== target &&
+        this.sharesBorderWith(ally) &&
+        ally.sharesBorderWith(target),
+    );
+  }
+
+  reachesByLand(target: Player): boolean {
+    return (
+      this.sharesBorderWith(target) || this.passageAllies(target).length > 0
+    );
+  }
+
   sharesBorderWith(other: Player | TerraNullius): boolean {
     const map = this.mg.map();
     const otherID = other.smallID();
@@ -1091,6 +1107,16 @@ export class PlayerImpl implements Player {
     this.outgoingQuickChats_.set(recipient.smallID(), this.mg.ticks());
   }
 
+  lastDonationTickTo(recipient: Player): number | null {
+    let last: number | null = null;
+    for (const d of this.sentDonations) {
+      if (d.recipient === recipient && (last === null || d.tick > last)) {
+        last = d.tick;
+      }
+    }
+    return last;
+  }
+
   canDonateGold(recipient: Player): boolean {
     if (recipient === this) {
       return false;
@@ -1104,7 +1130,10 @@ export class PlayerImpl implements Player {
     }
     if (
       recipient.type() === PlayerType.Human &&
-      this.mg.config().donateGold() === false
+      this.mg.config().donateGold() === false &&
+      // MoWorld: nação aliada pode ajudar o jogador mesmo com doação
+      // entre jogadores desligada (NationAllyAid).
+      this.type() !== PlayerType.Nation
     ) {
       return false;
     }
@@ -1134,7 +1163,10 @@ export class PlayerImpl implements Player {
     }
     if (
       recipient.type() === PlayerType.Human &&
-      this.mg.config().donateTroops() === false
+      this.mg.config().donateTroops() === false &&
+      // MoWorld: nação aliada pode ajudar o jogador mesmo com doação
+      // entre jogadores desligada (NationAllyAid).
+      this.type() !== PlayerType.Nation
     ) {
       return false;
     }
@@ -1987,7 +2019,10 @@ export class PlayerImpl implements Player {
       return false;
     }
     if (this.mg.hasOwner(tile)) {
-      return this.sharesBorderWith(owner);
+      // MoWorld: também pela terra de um aliado que faz fronteira com o alvo.
+      return owner.isPlayer()
+        ? this.reachesByLand(owner)
+        : this.sharesBorderWith(owner);
     } else {
       let foundBorder = false;
       this.mg.bfsSearch(

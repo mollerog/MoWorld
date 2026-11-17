@@ -1298,7 +1298,10 @@ export class NationAttackBehavior extends AiAttackBehavior {
 
   private bordersByLand(target: Player): boolean {
     return (
-      this.landNeighbors?.has(target) ?? this.player.sharesBorderWith(target)
+      (this.landNeighbors?.has(target) ??
+        this.player.sharesBorderWith(target)) ||
+      // MoWorld: passando por dentro de um aliado.
+      this.player.passageAllies(target).length > 0
     );
   }
 
