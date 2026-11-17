@@ -68,6 +68,8 @@ export class NukeBatchChangedEvent implements GameEvent {
   constructor(
     public readonly unitType: UnitType | null,
     public readonly tiles: readonly TileRef[],
+    /** MoWorld: aviso curto (ex.: alvo protegido de MIRV). */
+    public readonly note: string | null = null,
   ) {}
 }
 /** Pede para lançar (true) ou descartar (false) os alvos marcados. */
@@ -1542,9 +1544,13 @@ export class BuildPreviewController implements Controller {
   private nukeTargets: TileRef[] = [];
   private nukeTargetsType: UnitType | null = null;
 
-  private emitNukeBatch() {
+  private emitNukeBatch(note: string | null = null) {
     this.eventBus.emit(
-      new NukeBatchChangedEvent(this.nukeTargetsType, [...this.nukeTargets]),
+      new NukeBatchChangedEvent(
+        this.nukeTargetsType,
+        [...this.nukeTargets],
+        note,
+      ),
     );
   }
 
@@ -1570,9 +1576,41 @@ export class BuildPreviewController implements Controller {
       );
       return Math.hypot(p.x - x, p.y - y) < 22;
     });
-    if (near >= 0) this.nukeTargets.splice(near, 1);
-    else this.nukeTargets.push(this.game.ref(cell.x, cell.y));
-    this.emitNukeBatch();
+    if (near >= 0) {
+      this.nukeTargets.splice(near, 1);
+      this.emitNukeBatch();
+      return;
+    }
+    const tile = this.game.ref(cell.x, cell.y);
+    const me = this.game.myPlayer();
+    if (type !== UnitType.MIRV || !me) {
+      this.nukeTargets.push(tile);
+      this.emitNukeBatch();
+      return;
+    }
+    // MoWorld: MIRV num jogador protegido (recebeu um há menos de 5 min)
+    // não é marcado; o motor recusaria o lançamento.
+    me.actions(tile, [UnitType.MIRV])
+      .then((actions) => {
+        if (this.uiState.ghostStructure !== UnitType.MIRV) return;
+        const shield =
+          actions.buildableUnits.find((u) => u.type === UnitType.MIRV)
+            ?.targetShieldTicks ?? 0;
+        if (shield > 0) {
+          const owner = this.game.owner(tile);
+          const name = owner.isPlayer() ? owner.displayName() : "Alvo";
+          this.emitNukeBatch(
+            `🛡 ${name} recebeu um MIRV há pouco · protegido por ~${Math.ceil(shield / 600)} min`,
+          );
+          return;
+        }
+        this.nukeTargets.push(tile);
+        this.emitNukeBatch();
+      })
+      .catch(() => {
+        this.nukeTargets.push(tile);
+        this.emitNukeBatch();
+      });
   }
 
   private launchNukeTargets() {

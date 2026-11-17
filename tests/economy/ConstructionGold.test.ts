@@ -91,9 +91,12 @@ describe("Construction economy", () => {
 
     expect(player.units(UnitType.MIRV)).toHaveLength(1);
 
-    // Price of the MIRV increases for everyone with each launch.
+    // MoWorld: o preço dobra só para quem lançou.
+    expect(game.config().unitInfo(UnitType.MIRV).cost(game, player)).toBe(
+      50_000_000n,
+    );
     expect(game.config().unitInfo(UnitType.MIRV).cost(game, other)).toBe(
-      40_000_000n,
+      25_000_000n,
     );
   });
 });

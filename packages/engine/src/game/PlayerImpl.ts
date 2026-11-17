@@ -190,6 +190,8 @@ export class PlayerImpl implements Player {
   private lastDeleteUnitTick: Tick = -1;
   /** MoWorld: tick do último MIRV lançado (recarga de 5 minutos). */
   private lastMirvTick: Tick | null = null;
+  /** MoWorld: tick do último MIRV lançado contra este jogador (proteção). */
+  private lastMirvTargetedTick: Tick | null = null;
   private lastEmbargoAllTick: Tick = -1;
 
   public _incomingAttacks: Attack[] = [];
@@ -1479,6 +1481,19 @@ export class PlayerImpl implements Player {
     return true;
   }
 
+  mirvShieldTicks(): number {
+    if (this.lastMirvTargetedTick === null) return 0;
+    const left =
+      this.lastMirvTargetedTick +
+      this.mg.config().mirvShield() -
+      this.mg.ticks();
+    return Math.max(0, left);
+  }
+
+  markMirvTargeted(): void {
+    this.lastMirvTargetedTick = this.mg.ticks();
+  }
+
   /** MoWorld: ticks até poder lançar outro MIRV (0 = pode). */
   mirvCooldownTicks(): number {
     if (this.lastMirvTick === null) return 0;
@@ -1539,6 +1554,13 @@ export class PlayerImpl implements Player {
         ? this.validStructureSpawnTiles(tile)
         : [];
 
+    // MoWorld: proteção contra MIRV do dono do lugar (para a interface).
+    let mirvShield = 0;
+    if (tile !== null && mg.hasOwner(tile)) {
+      const owner = mg.owner(tile);
+      if (owner.isPlayer()) mirvShield = owner.mirvShieldTicks();
+    }
+
     const len = units.length;
     const result = new Array<BuildableUnit>(len);
 
@@ -1595,6 +1617,9 @@ export class PlayerImpl implements Player {
         ...(u === UnitType.MIRV && this.mirvCooldownTicks() > 0
           ? { cooldownTicks: this.mirvCooldownTicks() }
           : {}),
+        ...(u === UnitType.MIRV && mirvShield > 0
+          ? { targetShieldTicks: mirvShield }
+          : {}),
       };
     }
 
@@ -1619,11 +1644,17 @@ export class PlayerImpl implements Player {
     validTiles: TileRef[] | null,
   ): TileRef | false {
     switch (unitType) {
-      case UnitType.MIRV:
+      case UnitType.MIRV: {
         if (!this.mg.hasOwner(targetTile)) {
           return false;
         }
+        // MoWorld: quem acabou de receber um MIRV fica protegido 5 min.
+        const owner = this.mg.owner(targetTile);
+        if (owner.isPlayer() && owner.mirvShieldTicks() > 0) {
+          return false;
+        }
         return this.nukeSpawn(targetTile, unitType);
+      }
       case UnitType.AtomBomb:
       case UnitType.HydrogenBomb:
         return this.nukeSpawn(targetTile, unitType);
@@ -2052,6 +2083,7 @@ export class PlayerImpl implements Player {
         ([type, n]) => [type as UnitType, n],
       ),
       lastMirvTick: this.lastMirvTick,
+      lastMirvTargetedTick: this.lastMirvTargetedTick,
     };
   }
 
@@ -2127,6 +2159,7 @@ export class PlayerImpl implements Player {
     this.numUnitsConstructed = Object.fromEntries(s.numUnitsConstructed);
     // Saves de antes da recarga do MIRV não têm o campo.
     this.lastMirvTick = s.lastMirvTick ?? null;
+    this.lastMirvTargetedTick = s.lastMirvTargetedTick ?? null;
     this.nearbyMemo = null;
   }
 }
@@ -2198,6 +2231,7 @@ export const PlayerSnapshot = snapshotType({
       .optional(),
     numUnitsConstructed: z.array(z.tuple([UnitTypeSchema, zInt()])),
     lastMirvTick: zInt().nullable().optional(),
+    lastMirvTargetedTick: zInt().nullable().optional(),
   }),
 });
 export type PlayerState = z.infer<typeof PlayerSnapshot.schema>;

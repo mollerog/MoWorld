@@ -76,4 +76,38 @@ describe("MoWorld MIRV nerf", () => {
     expect(attacker.unitsConstructed(UnitType.MIRV)).toBe(2);
     expect(mirvCost(attacker)).toBe(100_000_000n);
   });
+
+  test("quem recebe um MIRV fica protegido de outros por 5 minutos", () => {
+    game.addPlayer(new PlayerInfo("third", PlayerType.Human, null, "third_id"));
+    const third = game.player("third_id");
+    for (let x = 80; x < 90; x++)
+      for (let y = 5; y < 15; y++) third.conquer(game.ref(x, y));
+    third.buildUnit(UnitType.MissileSilo, game.ref(85, 10), {});
+    game.addExecution(
+      new MissileSiloExecution(third.units(UnitType.MissileSilo)[0]),
+    );
+    third.addGold(1_000_000_000n);
+
+    const tile = game.ref(50, 50);
+    game.addExecution(new MirvExecution(attacker, tile));
+    game.executeNextTick();
+    game.executeNextTick();
+    expect(target.mirvShieldTicks()).toBeGreaterThan(2900);
+
+    // Outro jogador não consegue mirar no protegido...
+    const someTargetTile = Array.from(target.tiles())[0];
+    expect(third.canBuild(UnitType.MIRV, someTargetTile)).toBe(false);
+    const mirv = third
+      .buildableUnits(someTargetTile)
+      .find((u) => u.type === UnitType.MIRV)!;
+    expect(mirv.targetShieldTicks).toBeGreaterThan(2900);
+    // ...mas pode mirar em outro, e o protegido pode revidar.
+    expect(third.canBuild(UnitType.MIRV, game.ref(10, 10))).not.toBe(false);
+    target.addGold(1_000_000_000n);
+    target.buildUnit(UnitType.MissileSilo, someTargetTile, {});
+    game.addExecution(
+      new MissileSiloExecution(target.units(UnitType.MissileSilo)[0]),
+    );
+    expect(target.canBuild(UnitType.MIRV, game.ref(85, 10))).not.toBe(false);
+  });
 });

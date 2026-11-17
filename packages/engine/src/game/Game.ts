@@ -398,6 +398,12 @@ export interface Player extends PlayerLike {
   units(type: UnitType, type2?: UnitType, type3?: UnitType): Unit[];
   unitCount(type: UnitType): number;
   unitsConstructed(type: UnitType): number;
+  /** MoWorld: ticks até poder lançar outro MIRV (0 = pode). */
+  mirvCooldownTicks(): number;
+  /** MoWorld: ticks de proteção contra MIRV depois de receber um (0 = sem). */
+  mirvShieldTicks(): number;
+  /** MoWorld: alguém lançou um MIRV neste jogador agora. */
+  markMirvTargeted(): void;
   unitsOwned(type: UnitType): number;
   buildableUnits(
     tile: TileRef | null,

@@ -40,6 +40,9 @@ export class NukeBatchBar extends LitElement implements Controller {
   @state() private mode: UnitType | null = null;
   @state() private topPx = 0;
   @state() private coarse = true;
+  /** MoWorld: aviso curto no lugar das instruções (some em 4 s). */
+  @state() private note: string | null = null;
+  private noteTimer: ReturnType<typeof setTimeout> | null = null;
   private raf = 0;
 
   createRenderRoot() {
@@ -50,6 +53,12 @@ export class NukeBatchBar extends LitElement implements Controller {
     this.eventBus.on(NukeBatchChangedEvent, (e) => {
       this.tiles = e.tiles;
       this.type = e.unitType;
+      if (e.note) {
+        this.note = e.note;
+        navigator.vibrate?.(40);
+        if (this.noteTimer) clearTimeout(this.noteTimer);
+        this.noteTimer = setTimeout(() => (this.note = null), 4000);
+      }
     });
     const loop = () => {
       this.raf = requestAnimationFrame(loop);
@@ -143,13 +152,17 @@ export class NukeBatchBar extends LitElement implements Controller {
           <div class="text-sm font-extrabold truncate">
             🎯 ${NAMES[this.mode] ?? "Bomba"}
           </div>
-          <div class="text-[11px] text-slate-400">
+          <div
+            class="text-[11px] ${this.note ? "text-sky-300 font-bold" : "text-slate-400"}"
+          >
             ${
-              n === 0
-                ? this.coarse
-                  ? "Toque nos alvos · tocar de novo desmarca"
-                  : "Clique nos alvos · clicar de novo desmarca · Enter lança"
-                : `${n} alvo${n > 1 ? "s" : ""} · lança só o que o ouro e os silos permitirem`
+              this.note
+                ? this.note
+                : n === 0
+                  ? this.coarse
+                    ? "Toque nos alvos · tocar de novo desmarca"
+                    : "Clique nos alvos · clicar de novo desmarca · Enter lança"
+                  : `${n} alvo${n > 1 ? "s" : ""} · lança só o que o ouro e os silos permitirem`
             }
           </div>
         </div>

@@ -390,6 +390,10 @@ export class TargetPopup extends LitElement implements Controller {
       owner !== null &&
       !allied &&
       (t.actions.interaction?.canSendAllianceRequest ?? false);
+    // MoWorld: recebeu um MIRV há pouco → protegido de outro por até 5 min.
+    const shieldTicks =
+      t.actions.buildableUnits.find((u) => u.type === UnitType.MIRV)
+        ?.targetShieldTicks ?? 0;
     const color = owner ? owner.territoryColor().toHex() : "#94a3b8";
     const theirs = owner?.troops() ?? 0;
     // Força do ataque: tropas enviadas contra as tropas deles.
@@ -457,6 +461,13 @@ export class TargetPopup extends LitElement implements Controller {
                 Você envia
                 <span class="font-bold">${renderTroops(sending)}</span>
                 · ${strength[0]}
+              </div>`
+            : nothing
+        }
+        ${
+          shieldTicks > 0
+            ? html`<div class="mt-0.5 text-[11px] text-sky-300">
+                🛡 Protegido de MIRV por ~${Math.ceil(shieldTicks / 600)} min
               </div>`
             : nothing
         }

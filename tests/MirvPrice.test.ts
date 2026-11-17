@@ -31,7 +31,9 @@ describe("MIRV price", () => {
     for (const p of [human, nation]) p.addGold(1_000_000_000n);
   });
 
-  test("rises with every MIRV launched, by anyone", () => {
+  // MoWorld: o preço é por jogador e dobra (25M, 50M, 100M...); o MIRV de
+  // outro não encarece o seu.
+  test("doubles only for the player who launched", () => {
     expect(game.mirvsLaunched()).toBe(0);
     expect(mirvPrice(human)).toBe(25_000_000n);
 
@@ -41,8 +43,8 @@ describe("MIRV price", () => {
 
     // A nation has no per-player stats entry; its launch still counts.
     expect(game.mirvsLaunched()).toBe(1);
-    expect(mirvPrice(human)).toBe(40_000_000n);
-    expect(mirvPrice(nation)).toBe(40_000_000n);
+    expect(mirvPrice(human)).toBe(25_000_000n);
+    expect(mirvPrice(nation)).toBe(50_000_000n);
   });
 
   test("a fizzled launch does not count", () => {

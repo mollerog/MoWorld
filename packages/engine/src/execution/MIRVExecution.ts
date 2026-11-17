@@ -119,6 +119,8 @@ export class MirvExecution implements Execution {
         targetPlayer: this.targetPlayer,
       });
       this.mg.recordMirvLaunch();
+      // MoWorld: o alvo fica protegido de outros MIRVs por 5 minutos.
+      if (this.targetPlayer.isPlayer()) this.targetPlayer.markMirvTargeted();
       this.mg.stats().bombLaunch(this.player, this.targetPlayer, UnitType.MIRV);
 
       // Betrayal on launch — only once the missile has actually spawned, so

@@ -139,15 +139,15 @@ export function isMirvWorthSavingFor(game: Game, player: Player): boolean {
 }
 
 function validMirvTargets(game: Game, player: Player): Player[] {
-  return game
-    .players()
-    .filter(
-      (p) =>
-        p !== player &&
-        p.isPlayer() &&
-        p.type() !== PlayerType.Bot &&
-        !player.isOnSameTeam(p),
-    );
+  return game.players().filter(
+    (p) =>
+      p !== player &&
+      p.isPlayer() &&
+      p.type() !== PlayerType.Bot &&
+      !player.isOnSameTeam(p) &&
+      // MoWorld: quem recebeu um MIRV há menos de 5 min está protegido.
+      p.mirvShieldTicks() === 0,
+  );
 }
 
 export class NationMIRVBehavior {

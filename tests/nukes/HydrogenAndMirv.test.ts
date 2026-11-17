@@ -388,6 +388,9 @@ describe("Hydrogen Bomb and MIRV flows", () => {
     const spy = vi
       .spyOn(MirvExecution.prototype as any, "isOverlapping")
       .mockReturnValue(false);
+    // MoWorld: dois MIRVs seguidos do mesmo jogador; tira a recarga e a proteção de 5 min.
+    vi.spyOn(edgePlayer, "mirvCooldownTicks").mockReturnValue(0);
+    vi.spyOn(edgePlayer, "mirvShieldTicks").mockReturnValue(0);
 
     // -- EDGE SHOT --
     edgeGame.addExecution(

@@ -281,6 +281,11 @@ export class Config {
     return 5 * 60 * 10;
   }
 
+  /** MoWorld: quem recebe um MIRV fica protegido de outros por 5 minutos. */
+  mirvShield(): Tick {
+    return 5 * 60 * 10;
+  }
+
   deleteUnitCooldown(): Tick {
     return 30 * 10;
   }

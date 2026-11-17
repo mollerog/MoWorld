@@ -361,6 +361,8 @@ export interface BuildableUnit {
   ghostRailPaths: TileRef[][];
   // MoWorld: ticks que faltam para poder lançar de novo (só MIRV, > 0).
   cooldownTicks?: number;
+  // MoWorld: dono do lugar está protegido de MIRV por mais N ticks.
+  targetShieldTicks?: number;
 }
 
 // Total price of buying `amount` of a buildable in one intent. Upgrades use
