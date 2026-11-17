@@ -1,5 +1,9 @@
 import { TileRef } from "@openfront/engine-api/game/GameMap";
-import { PlayerID, UnitType } from "@openfront/engine-api/game/GameTypes";
+import {
+  PlayerID,
+  TerraNullius,
+  UnitType,
+} from "@openfront/engine-api/game/GameTypes";
 import {
   zInt,
   zNum,
@@ -19,6 +23,8 @@ import { AttackExecution } from "./AttackExecution";
 
 /** Tiles por tick; o barco anda 1. */
 const TICKS_PER_MOVE = 1;
+/** Perda ao recuar, igual ao barco (TransportShipExecution). */
+const RETREAT_MALUS = 0.25;
 /** Limite da busca de caminho (tiles visitados). */
 const MAX_SEARCH = 400_000;
 
@@ -41,6 +47,8 @@ export class ArmyMarchExecution implements Execution {
   private path: TileRef[] = [];
   private step = 0;
   private motionPlanId = 1;
+  /** Já começou a voltar (o plano de movimento de volta foi gravado). */
+  private retreating = false;
 
   constructor(
     private attacker: Player,
@@ -83,14 +91,21 @@ export class ArmyMarchExecution implements Execution {
       this.active = false;
       return;
     }
+    const here = army.tile();
+    const hereOwner = mg.owner(here);
+
+    // Cancelado pelo jogador: volta pelo mesmo caminho.
+    if (army.transportShipState().isRetreating) {
+      this.retreatStep(ticks, here, hereOwner);
+      return;
+    }
+
     const target = mg.player(this.targetID);
     if (!target.isAlive() || this.attacker.isFriendly(target)) {
       this.giveBack();
       return;
     }
 
-    const here = army.tile();
-    const hereOwner = mg.owner(here);
     // Parado dentro de quem deixou de ser aliado: ataca ele daqui.
     if (
       hereOwner.isPlayer() &&
@@ -156,6 +171,36 @@ export class ArmyMarchExecution implements Execution {
     this.step++;
   }
 
+  private retreatStep(
+    ticks: number,
+    here: TileRef,
+    hereOwner: Player | TerraNullius,
+  ) {
+    const army = this.army!;
+    if (hereOwner === this.attacker || this.step <= 0) {
+      // Chegou em casa: devolve as tropas, com a perda do recuo.
+      const troops = army.troops();
+      this.attacker.addTroops(Math.floor(troops * (1 - RETREAT_MALUS)));
+      army.delete(false);
+      this.active = false;
+      return;
+    }
+    if (!this.retreating) {
+      this.retreating = true;
+      this.motionPlanId++;
+      this.mg!.recordMotionPlan({
+        kind: "grid",
+        unitId: army.id(),
+        planId: this.motionPlanId,
+        startTick: ticks + TICKS_PER_MOVE,
+        ticksPerStep: TICKS_PER_MOVE,
+        path: this.path.slice(0, this.step + 1).reverse(),
+      });
+    }
+    this.step--;
+    army.move(this.path[this.step]);
+  }
+
   private landAndAttack(tile: TileRef, enemy: Player) {
     const mg = this.mg!;
     this.attacker.conquer(tile);
@@ -218,6 +263,7 @@ export class ArmyMarchExecution implements Execution {
       path: Uint32Array.from(this.path),
       step: this.step,
       motionPlanId: this.motionPlanId,
+      retreating: this.retreating,
     });
   }
 
@@ -231,6 +277,7 @@ export class ArmyMarchExecution implements Execution {
     this.path = Array.from(s.path);
     this.step = s.step;
     this.motionPlanId = s.motionPlanId;
+    this.retreating = s.retreating ?? false;
   }
 }
 
@@ -308,6 +355,7 @@ const ArmyMarchExecutionStateSchema = z.object({
   path: zTiles(),
   step: zInt(),
   motionPlanId: zInt(),
+  retreating: z.boolean().optional(),
 });
 type ArmyMarchExecutionState = z.infer<typeof ArmyMarchExecutionStateSchema>;
 

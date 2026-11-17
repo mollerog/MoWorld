@@ -23,7 +23,9 @@ export class BoatRetreatExecution implements Execution {
       .units()
       .find(
         (unit) =>
-          unit.id() === this.unitID && unit.type() === UnitType.TransportShip,
+          unit.id() === this.unitID &&
+          (unit.type() === UnitType.TransportShip ||
+            unit.type() === UnitType.Army),
       );
 
     if (!unit) {

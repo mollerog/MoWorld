@@ -453,6 +453,17 @@ export class AttacksDisplay extends LitElement implements Controller {
               "text-left text-amber-200 inline-flex items-center gap-0.5 lg:gap-1 min-w-0",
             translate: false,
           })}
+          ${
+            army.transportShipState().isRetreating
+              ? html`<span class="ml-auto truncate text-amber-200"
+                  >(${translateText("events_display.retreating")}...)</span
+                >`
+              : this.renderButton({
+                  content: "\u274C",
+                  onClick: () => this.emitBoatCancelIntent(army.id()),
+                  className: "ml-auto text-left shrink-0",
+                })
+          }
         </div>
       `,
     );

@@ -6,6 +6,7 @@ import {
   UnitType,
 } from "@openfront/engine-api/game/GameTypes";
 import { AttackExecution } from "@openfront/engine/execution/AttackExecution";
+import { BoatRetreatExecution } from "@openfront/engine/execution/BoatRetreatExecution";
 import { Game, Player } from "@openfront/engine/game/Game";
 import { setup } from "./util/Setup";
 import { expectSnapshotRoundTrip } from "./util/Snapshot";
@@ -123,5 +124,22 @@ describe("MoWorld passagem por aliado", () => {
     executeTicks(game, 4);
     expect(me.units(UnitType.Army)).toHaveLength(1);
     await expectSnapshotRoundTrip(game, "plains", 30);
+  });
+
+  test("cancelar: o exército volta e devolve as tropas (menos 25%)", () => {
+    me.createAllianceRequest(ally)?.accept();
+    const troops = me.troops();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 5);
+    const army = me.units(UnitType.Army)[0];
+    expect(army).toBeDefined();
+    const enemyBefore = enemy.numTilesOwned();
+    game.addExecution(new BoatRetreatExecution(me, army.id()));
+    executeTicks(game, 20);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(enemy.numTilesOwned()).toBe(enemyBefore);
+    const back = me.troops() - (troops - 20_000);
+    expect(back).toBeGreaterThanOrEqual(15_000);
+    expect(back).toBeLessThan(20_000 + 2_000);
   });
 });

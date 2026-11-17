@@ -90,7 +90,8 @@ export class UnitImpl implements Unit {
       "lastSetSafeFromPirates" in params
         ? (params.lastSetSafeFromPirates ?? 0)
         : 0;
-    if (this._type === UnitType.TransportShip) {
+    // MoWorld: o Exército usa o mesmo estado (recuar como o barco).
+    if (this._type === UnitType.TransportShip || this._type === UnitType.Army) {
       this._transportShipState = { isRetreating: false, troops: 0 };
     }
     if (this._type === UnitType.SAMLauncher) {
