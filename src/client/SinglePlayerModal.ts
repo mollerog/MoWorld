@@ -135,6 +135,7 @@ const DEFAULT_OPTIONS = {
   maxTimer: false,
   maxTimerValue: undefined as number | undefined,
   instantBuild: false,
+  moworldTest: false,
   randomSpawn: false,
   useRandomMap: false,
   gameMode: GameMode.FFA,
@@ -212,6 +213,8 @@ export class SinglePlayerModal extends BaseModal {
   @state() private maxTimerValue: number | undefined =
     DEFAULT_OPTIONS.maxTimerValue;
   @state() private instantBuild: boolean = DEFAULT_OPTIONS.instantBuild;
+  // MoWorld: modo de teste (vantagens só para quem joga, esperas de 30 s).
+  @state() private moworldTest: boolean = DEFAULT_OPTIONS.moworldTest;
   @state() private randomSpawn: boolean = DEFAULT_OPTIONS.randomSpawn;
   @state() private useRandomMap: boolean = DEFAULT_OPTIONS.useRandomMap;
   @state() private gameMode: GameMode = DEFAULT_OPTIONS.gameMode;
@@ -589,6 +592,10 @@ export class SinglePlayerModal extends BaseModal {
                 },
                 toggles: [
                   {
+                    labelKey: "game_settings.moworld_test",
+                    checked: this.moworldTest,
+                  },
+                  {
                     labelKey: "game_settings.instant_build",
                     checked: this.instantBuild,
                   },
@@ -679,6 +686,7 @@ export class SinglePlayerModal extends BaseModal {
       this.compactMap !== DEFAULT_OPTIONS.compactMap ||
       this.maxTimer !== DEFAULT_OPTIONS.maxTimer ||
       this.instantBuild !== DEFAULT_OPTIONS.instantBuild ||
+      this.moworldTest !== DEFAULT_OPTIONS.moworldTest ||
       this.randomSpawn !== DEFAULT_OPTIONS.randomSpawn ||
       this.gameMode !== DEFAULT_OPTIONS.gameMode ||
       this.goldMultiplier !== DEFAULT_OPTIONS.goldMultiplier ||
@@ -807,6 +815,7 @@ export class SinglePlayerModal extends BaseModal {
     this.maxTimer = DEFAULT_OPTIONS.maxTimer;
     this.maxTimerValue = DEFAULT_OPTIONS.maxTimerValue;
     this.instantBuild = DEFAULT_OPTIONS.instantBuild;
+    this.moworldTest = DEFAULT_OPTIONS.moworldTest;
     this.randomSpawn = DEFAULT_OPTIONS.randomSpawn;
     this.teamCount = DEFAULT_OPTIONS.teamCount;
     this.disabledUnits = [...DEFAULT_OPTIONS.disabledUnits];
@@ -1016,6 +1025,9 @@ export class SinglePlayerModal extends BaseModal {
     switch (labelKey) {
       case "game_settings.instant_build":
         this.instantBuild = checked;
+        break;
+      case "game_settings.moworld_test":
+        this.moworldTest = checked;
         break;
       case "game_settings.random_spawn":
         this.randomSpawn = checked;
@@ -1343,6 +1355,7 @@ export class SinglePlayerModal extends BaseModal {
             donateTroops: this.gameMode === GameMode.Team,
             infiniteTroops: this.infiniteTroops,
             instantBuild: this.instantBuild,
+            ...(this.moworldTest ? { moworldTest: true } : {}),
             randomSpawn: this.randomSpawn,
             disabledUnits: this.disabledUnits.filter((unit): unit is UnitType =>
               Object.values(UnitType).includes(unit),

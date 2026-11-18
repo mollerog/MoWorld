@@ -12,6 +12,9 @@ import { pow } from "../DetMath";
 import { DoomsdayClockSpeed } from "../game/DoomsdayClock";
 import { assertNever } from "../Util";
 
+/** MoWorld: esperas do modo de teste (30 s). */
+export const TEST_WAIT = 30 * 10;
+
 export interface NukeMagnitude {
   inner: number;
   outer: number;
@@ -266,8 +269,23 @@ export class Config {
     return info;
   }
 
+  /**
+   * MoWorld: modo de teste do solo. Quem joga (humano) tem ouro e tropas
+   * infinitos e constrói na hora; as nações jogam normalmente. As esperas
+   * do MoWorld (MIRV, ajuda aliada) caem para TEST_WAIT.
+   */
+  isMoWorldTest(): boolean {
+    return this._gameConfig.moworldTest === true;
+  }
+
+  /** MoWorld: o modo de teste dá vantagens só ao humano. */
+  isTestCheater(type: PlayerType): boolean {
+    return this.isMoWorldTest() && type === PlayerType.Human;
+  }
+
   private hasInfiniteTroopsFor(player: PlayerLike): boolean {
     if (this.infiniteTroops()) return true;
+    if (this.isTestCheater(player.type())) return true;
     return (
       (this._gameConfig.hostCheats?.infiniteTroops ?? false) &&
       player.isLobbyCreator()
@@ -279,12 +297,17 @@ export class Config {
 
   /** MoWorld: espera entre dois MIRVs do mesmo jogador (5 minutos). */
   mirvCooldown(): Tick {
-    return 5 * 60 * 10;
+    return this.isMoWorldTest() ? TEST_WAIT : 5 * 60 * 10;
   }
 
   /** MoWorld: quem recebe um MIRV fica protegido de outros por 5 minutos. */
   mirvShield(): Tick {
-    return 5 * 60 * 10;
+    return this.isMoWorldTest() ? TEST_WAIT : 5 * 60 * 10;
+  }
+
+  /** MoWorld: espera entre duas ajudas da mesma nação aliada (3 minutos). */
+  allyAidCooldown(): Tick {
+    return this.isMoWorldTest() ? TEST_WAIT : 3 * 60 * 10;
   }
 
   deleteUnitCooldown(): Tick {

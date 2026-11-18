@@ -4,12 +4,12 @@
 // terra numa barra até a meta de vitória (80%, ou menor com prorrogação), a
 // sua posição no ranking e o principal rival (o 1º lugar, ou o 2º quando o
 // 1º é você).
-import { SpawnClock } from "../SpawnClock";
 import { renderNumber } from "@openfront/engine-lib/Format";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
 import { Controller } from "../../Controller";
 import { GameView, PlayerView } from "../../view";
+import { SpawnClock } from "../SpawnClock";
 
 type Snapshot = {
   myShare: number;
@@ -125,6 +125,16 @@ export class ControlBar extends LitElement implements Controller {
                   >${s.chip.icon}
                   <span class="mw-cb-label">${s.chip.label}</span>
                   ${this.clock(s.chip.seconds)}</span
+                >`
+              : nothing
+          }
+          ${
+            this.game.config().isMoWorldTest()
+              ? html`<span
+                  class="shrink-0 rounded-full bg-fuchsia-500/20 px-2 py-0.5 font-bold text-fuchsia-300"
+                  data-moworld-test-badge
+                  title="Modo teste: ouro e tropas infinitos e construção na hora só para você; esperas de 30 s"
+                  >🧪 TESTE</span
                 >`
               : nothing
           }

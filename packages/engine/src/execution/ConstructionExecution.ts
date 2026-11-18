@@ -81,7 +81,10 @@ export class ConstructionExecution implements Execution {
         spawnTile,
         {},
       );
-      const duration = info.constructionDuration ?? 0;
+      // MoWorld: no modo de teste, quem joga constrói na hora.
+      const duration = this.mg.config().isTestCheater(this.player.type())
+        ? 0
+        : (info.constructionDuration ?? 0);
       if (duration > 0) {
         this.structure.setUnderConstruction(true);
         this.ticksUntilComplete = duration;

@@ -19,6 +19,7 @@ import { DonateTroopsExecution } from "../DonateTroopExecution";
  * Vale mesmo com a doação entre jogadores desligada (solo): é ajuda da nação.
  * Sem sorteio, para não mexer na sequência aleatória das nações.
  */
+// Igual a Config.allyAidCooldown() fora do modo de teste.
 export const ALLY_AID_COOLDOWN = 3 * 60 * 10;
 
 export function maybeAidAllies(game: Game, nation: Player): boolean {
@@ -31,7 +32,8 @@ export function maybeAidAllies(game: Game, nation: Player): boolean {
     if (ally.type() !== PlayerType.Human || !ally.isAlive()) continue;
     if (nation.relation(ally) < Relation.Friendly) continue;
     const last = nation.lastDonationTickTo(ally);
-    if (last !== null && game.ticks() - last < ALLY_AID_COOLDOWN) continue;
+    if (last !== null && game.ticks() - last < config.allyAidCooldown())
+      continue;
 
     // Tropas para quem está apanhando.
     const allyMax = config.maxTroops(ally);

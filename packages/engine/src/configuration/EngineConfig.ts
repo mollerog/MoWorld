@@ -330,6 +330,7 @@ export class EngineConfig extends Config {
 
   private hasInfiniteGoldFor(player: PlayerLike): boolean {
     if (this.infiniteGold()) return true;
+    if (this.isTestCheater(player.type())) return true;
     const hc = this._gameConfig.hostCheats;
     return (hc?.infiniteGold ?? false) && player.isLobbyCreator();
   }
@@ -413,6 +414,7 @@ export class EngineConfig extends Config {
 
   private hasInfiniteTroopsForInfo(playerInfo: PlayerInfo): boolean {
     if (this.infiniteTroops()) return true;
+    if (this.isTestCheater(playerInfo.playerType)) return true;
     return (
       (this._gameConfig.hostCheats?.infiniteTroops ?? false) &&
       playerInfo.isLobbyCreator
