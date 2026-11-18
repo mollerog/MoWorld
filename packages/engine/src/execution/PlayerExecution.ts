@@ -5,6 +5,7 @@ import {
   Structures,
   UnitType,
 } from "@openfront/engine-api/game/GameTypes";
+import { areCoopPartners, isCoopDuo } from "@openfront/engine-lib/game/CoopDuo";
 import { zInt, zPlayerRef } from "@openfront/engine-lib/snapshot/SnapshotType";
 import { getMode, simpleHash } from "@openfront/engine-lib/Util";
 import { z } from "zod";
@@ -104,7 +105,16 @@ export class PlayerExecution implements Execution {
     // Record stats
     this.mg.stats().goldWork(this.player, goldFromWorkers);
 
+    const gameConfig = this.mg.config().gameConfig();
+    if (isCoopDuo(gameConfig)) {
+      this.keepCoopAlliances();
+    }
     for (const alliance of this.player.alliances()) {
+      if (
+        areCoopPartners(gameConfig, this.player, alliance.other(this.player))
+      ) {
+        continue;
+      }
       if (alliance.expiresAt() <= this.mg.ticks()) {
         alliance.expire();
       }
@@ -882,6 +892,24 @@ export class PlayerExecution implements Execution {
       return CLUSTER_SURROUNDED;
     }
     return 0;
+  }
+
+  // MoWorld: na dupla, a aliança entre os dois humanos começa sozinha e é
+  // renovada antes de aparecer o pedido de renovação.
+  private keepCoopAlliances() {
+    if (this.player.type() !== PlayerType.Human) return;
+    const gameConfig = this.mg.config().gameConfig();
+    const renewAt =
+      this.mg.ticks() + this.mg.config().allianceExtensionPromptOffset() + 10;
+    for (const other of this.mg.players()) {
+      if (!areCoopPartners(gameConfig, this.player, other)) continue;
+      const alliance = this.player.allianceWith(other);
+      if (alliance === null) {
+        this.player.createAllianceRequest(other)?.accept();
+      } else if (alliance.expiresAt() <= renewAt) {
+        alliance.extend();
+      }
+    }
   }
 
   private isFriendlySmallID(smallID: number): boolean {

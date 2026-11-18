@@ -24,6 +24,7 @@ import {
 } from "@openfront/engine-api/game/GameUpdates";
 import { MapFiles } from "@openfront/engine-api/game/MapFiles";
 import { ClientID, GameStartInfo, Turn } from "@openfront/engine-api/Schemas";
+import { areCoopPartners } from "@openfront/engine-lib/game/CoopDuo";
 import { packUnitUpdates } from "@openfront/engine-lib/game/PackedUnitUpdates";
 import { loadTerrainMap } from "@openfront/engine-lib/game/TerrainMapLoader";
 import { PseudoRandom } from "@openfront/engine-lib/PseudoRandom";
@@ -383,7 +384,9 @@ export class GameRunner {
         canSendEmoji: player.canSendEmoji(other),
         canTarget: player.canTarget(other),
         canSendAllianceRequest: player.canSendAllianceRequest(other),
-        canBreakAlliance: player.isAlliedWith(other),
+        canBreakAlliance:
+          player.isAlliedWith(other) &&
+          !areCoopPartners(this.game.config().gameConfig(), player, other),
         canDonateGold: player.canDonateGold(other),
         canDonateTroops: player.canDonateTroops(other),
         canEmbargo: !player.hasEmbargoAgainst(other),

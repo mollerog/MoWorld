@@ -312,6 +312,8 @@ export const GameConfigSchema = z.object({
   // The onboarding tutorial (docs/OnboardingTutorial.md): nations and tribes
   // only grow into free land, and the game ends once the human is alone.
   tutorial: z.boolean().optional(),
+  // MoWorld: sala com amigos em dupla (engine-lib/game/CoopDuo.ts).
+  coopDuo: z.boolean().optional(),
   maxPlayers: zb.uint().optional(),
   // OFM: allowlist of publicIds allowed to join (admin-only, see create_game).
   allowedPublicIds: z.array(z.string()).max(200).optional(),

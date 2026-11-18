@@ -1,8 +1,8 @@
-import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { GameType, UnitType } from "@openfront/engine-api/game/GameTypes";
-import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
 import { GameUpdateType } from "@openfront/engine-api/game/GameUpdates";
 import type { AllPlayersStats, Winner } from "@openfront/engine-api/Schemas";
+import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
+import { areCoopPartners, isCoopDuo } from "@openfront/engine-lib/game/CoopDuo";
 import type { GameXpEligible, Progress } from "@openfront/shared/ApiSchemas";
 import { Pattern } from "@openfront/shared/CosmeticSchemas";
 import { EventBus } from "@openfront/shared/EventBus";
@@ -18,8 +18,8 @@ import {
   TUTORIAL_VIDEO_URL,
 } from "../../../client/Utils";
 import { fetchUserMeUncached, getUserMe, invalidateUserMe } from "../../Api";
-import "../../components/CosmeticCard";
 import { cosmeticSelectionLabel } from "../../components/CosmeticPresentation";
+import "../../components/CosmeticCard";
 import {
   ffaRatingGameOf,
   type FfaRatingGame,
@@ -27,10 +27,10 @@ import {
 } from "../../components/ffaRating/FfaRatingEligibility";
 import type { GameXpPanelState } from "../../components/GameXpPanel";
 import type { LegendCeremony } from "../../components/LegendCeremony";
+import { Controller } from "../../Controller";
 import "../../components/ProfileShare";
 import "../../components/PurchaseButton";
 import "../../components/SteamWishlist";
-import { Controller } from "../../Controller";
 import {
   fetchCosmetics,
   purchaseCosmetic,
@@ -47,6 +47,7 @@ import {
   momentShareUrl,
 } from "../../MomentShare";
 import { Platform } from "../../Platform";
+import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { MAX_PRESTIGE, reachedLegendThisGame } from "../../Progression";
 import { resolveXpAccount } from "../../ProgressionAccount";
 import { fetchProgressionConfig, pollGameXp } from "../../ProgressionApi";
@@ -1201,11 +1202,20 @@ export class WinModal extends LitElement implements Controller {
         if (winnerClient !== null) {
           vote(["player", winnerClient], wu.allPlayersStats);
         }
+        const me = this.game.myPlayer();
+        // MoWorld: na dupla, a vitória é dos dois.
+        const duoWin =
+          me !== null &&
+          areCoopPartners(this.game.config().gameConfig(), me, winner);
         if (
-          winnerClient !== null &&
-          winnerClient === this.game.myPlayer()?.clientID()
+          (winnerClient !== null && winnerClient === me?.clientID()) ||
+          duoWin
         ) {
-          this._title = translateText("win_modal.you_won");
+          this._title = translateText(
+            isCoopDuo(this.game.config().gameConfig())
+              ? "win_modal.duo_won"
+              : "win_modal.you_won",
+          );
           this.isWin = true;
           void gamePortal.happytime();
         } else {

@@ -33,6 +33,7 @@ import {
 } from "@openfront/engine-api/game/GameUpdates";
 import { ReadonlyTileSet } from "@openfront/engine-api/game/ReadViews";
 import { ClientID } from "@openfront/engine-api/Schemas";
+import { areCoopPartners } from "@openfront/engine-lib/game/CoopDuo";
 import { andFN, manhattanDistFN } from "@openfront/engine-lib/game/GameMapImpl";
 import { TileSet } from "@openfront/engine-lib/game/TileSet";
 import { PseudoRandom } from "@openfront/engine-lib/PseudoRandom";
@@ -897,6 +898,12 @@ export class PlayerImpl implements Player {
   }
 
   breakAlliance(alliance: MutableAlliance): void {
+    // MoWorld: a aliança da dupla não se rompe (nem por bomba).
+    if (
+      areCoopPartners(this.mg.config().gameConfig(), this, alliance.other(this))
+    ) {
+      return;
+    }
     this.mg.breakAlliance(this, alliance);
   }
 

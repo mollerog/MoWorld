@@ -4,15 +4,16 @@
 // Quando não sobra nenhum adversário vivo (nações, tribos ou jogadores), não há
 // mais nada a fazer: esta tela pausa a partida e a encerra, com um resumo e o
 // botão para voltar ao início.
-import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
-import { peerSession } from "../../peer/PeerSession";
+import { areCoopPartners } from "@openfront/engine-lib/game/CoopDuo";
+import { EventBus } from "@openfront/shared/EventBus";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
-import { EventBus } from "@openfront/shared/EventBus";
 import { Controller } from "../../Controller";
+import { peerSession } from "../../peer/PeerSession";
+import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { PauseGameIntentEvent } from "../../Transport";
 import { homeHref } from "../../Utils";
-import { GameView } from "../../view";
+import { GameView, PlayerView } from "../../view";
 
 @customElement("moworld-total-victory")
 export class TotalVictory extends LitElement implements Controller {
@@ -20,8 +21,12 @@ export class TotalVictory extends LitElement implements Controller {
   public eventBus!: EventBus;
 
   private shown = false;
-  private summary: { minutes: number; seconds: number; share: number } | null =
-    null;
+  private summary: {
+    minutes: number;
+    seconds: number;
+    share: number;
+    together: boolean;
+  } | null = null;
 
   createRenderRoot() {
     return this;
@@ -35,10 +40,18 @@ export class TotalVictory extends LitElement implements Controller {
     if (this.shown || this.game.inSpawnPhase()) return;
     const me = this.game.myPlayer();
     if (me === null || !me.isAlive()) return;
+    // MoWorld: o parceiro (dupla ou mesmo time) não é inimigo.
     const enemiesAlive = this.game
       .players()
-      .some((p) => p.id() !== me.id() && p.isAlive());
+      .some((p) => p.id() !== me.id() && p.isAlive() && !this.sameSide(me, p));
     if (!enemiesAlive) this.showVictory();
+  }
+
+  private sameSide(me: PlayerView, p: PlayerView): boolean {
+    return (
+      areCoopPartners(this.game.config().gameConfig(), me, p) ||
+      (me.team() !== null && me.team() === p.team())
+    );
   }
 
   /** Encerra a partida mostrando a vitória total. */
@@ -52,9 +65,22 @@ export class TotalVictory extends LitElement implements Controller {
     );
     const elapsed = Math.floor(this.game.elapsedGameSeconds());
     this.summary = {
+      together:
+        me !== null &&
+        this.game
+          .players()
+          .some((p) => p.id() !== me.id() && this.sameSide(me, p)),
       minutes: Math.floor(elapsed / 60),
       seconds: elapsed % 60,
-      share: me ? (me.numTilesOwned() / land) * 100 : 100,
+      // Do lado inteiro (dupla ou time), não só de quem vê.
+      share: me
+        ? (this.game
+            .players()
+            .filter((p) => p.id() === me.id() || this.sameSide(me, p))
+            .reduce((sum, p) => sum + p.numTilesOwned(), 0) /
+            land) *
+          100
+        : 100,
     };
     // Para o jogo e tira a tela de vitória comum (80%) da frente.
     // Jogando junto, pausar pediria o aceite do outro: não pausa.
@@ -81,8 +107,12 @@ export class TotalVictory extends LitElement implements Controller {
             VITÓRIA TOTAL
           </div>
           <p class="mt-3 text-sm text-white/80">
-            Você eliminou todos os inimigos e conquistou o mundo. Não há mais
-            nada a conquistar — partida encerrada.
+            ${
+              s.together
+                ? "Vocês eliminaram todos os inimigos e conquistaram o mundo juntos."
+                : "Você eliminou todos os inimigos e conquistou o mundo."
+            }
+            Não há mais nada a conquistar — partida encerrada.
           </p>
           <div class="mt-5 grid grid-cols-2 gap-2 text-left">
             <div class="rounded-xl border border-white/10 bg-white/5 p-3">

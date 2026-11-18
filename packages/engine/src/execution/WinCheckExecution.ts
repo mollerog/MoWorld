@@ -5,6 +5,7 @@ import {
   RankedType,
   Team,
 } from "@openfront/engine-api/game/GameTypes";
+import { isCoopDuo } from "@openfront/engine-lib/game/CoopDuo";
 import { z } from "zod";
 import { Execution, Game } from "../game/Game";
 import { execSnapshotType } from "../snapshot/ExecutionSnapshot";
@@ -109,6 +110,19 @@ export class WinCheckExecution implements Execution {
       if (humans.length === 1) {
         this.mg.setWinner(humans[0], this.mg.stats().stats());
         console.log(`${humans[0].name()} has won the game`);
+        this.active = false;
+        return;
+      }
+    }
+
+    // MoWorld: a dupla vence junta, com a soma das terras dos dois. A
+    // vitória fica com o maior dos dois (a tela trata os dois como vencedores).
+    if (isCoopDuo(this.mg.config().gameConfig())) {
+      const duo = sorted.filter((p) => p.type() === PlayerType.Human);
+      const duoTiles = duo.reduce((sum, p) => sum + p.numTilesOwned(), 0);
+      if (duo.length > 0 && this.hasWon(duoTiles)) {
+        this.mg.setWinner(duo[0], this.mg.stats().stats());
+        console.log(`${duo[0].name()} and partner have won the game`);
         this.active = false;
         return;
       }

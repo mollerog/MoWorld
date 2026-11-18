@@ -8,6 +8,7 @@ import {
   GameMapType,
   GameMode,
   GameType,
+  HumansVsNations,
 } from "@openfront/engine-api/game/GameTypes";
 import { generateID } from "@openfront/shared/SharedUtil";
 import type { WireGameStartInfo } from "@openfront/shared/WireSchemas";
@@ -37,6 +38,26 @@ const DIFFS: [Difficulty, string][] = [
   [Difficulty.Hard, "Difícil"],
 ];
 
+// MoWorld: como os dois jogam. "duo" e "world" põem os dois do mesmo lado.
+type CoopMode = "ffa" | "duo" | "world";
+const MODES: { mode: CoopMode; label: string; info: string }[] = [
+  {
+    mode: "duo",
+    label: "Dupla",
+    info: "Vocês dois aliados para sempre, contra as nações (que também brigam entre si). Vencem juntos com 80% das terras somadas.",
+  },
+  {
+    mode: "world",
+    label: "Contra o mundo",
+    info: "Todas as nações viram um time só e atacam vocês o tempo todo. Bem mais difícil.",
+  },
+  {
+    mode: "ffa",
+    label: "Cada um por si",
+    info: "Todos contra todos, como no solo. Dá para fazer aliança e doar tropas e ouro um para o outro.",
+  },
+];
+
 function myName(): string {
   const input = document.querySelector(
     "username-input",
@@ -61,6 +82,7 @@ export class CoopLobby extends LitElement {
   @state() private error = "";
   @state() private partner = "";
   @state() private difficulty: Difficulty = Difficulty.Easy;
+  @state() private mode: CoopMode = "duo";
   @state() private account = accountStatus();
   @state() private rtt: number | null = null;
 
@@ -214,8 +236,9 @@ export class CoopLobby extends LitElement {
         gameMap: GameMapType.World,
         gameMapSize: GameMapSize.Normal,
         gameType: GameType.Singleplayer,
-        gameMode: GameMode.FFA,
-        playerTeams: 2,
+        gameMode: this.mode === "world" ? GameMode.Team : GameMode.FFA,
+        playerTeams: this.mode === "world" ? HumansVsNations : 2,
+        coopDuo: this.mode === "duo",
         difficulty: this.difficulty,
         bots: 400,
         infiniteGold: false,
@@ -379,9 +402,26 @@ export class CoopLobby extends LitElement {
                         </button>`,
                     )}
                   </div>
-                  <div class="mt-2 text-xs text-white/50">
-                    Mapa: Mundo · cada um por si (dá para fazer aliança e doar
-                    tropas/ouro um para o outro)
+                  <div class="mt-3 text-xs uppercase text-white/50">Modo</div>
+                  <div class="mt-1 grid grid-cols-3 gap-1">
+                    ${MODES.map(
+                      (m) =>
+                        html`<button
+                          class="rounded-lg px-1 py-2 text-sm font-bold ${
+                            this.mode === m.mode
+                              ? "bg-amber-400 text-slate-900"
+                              : "bg-white/10"
+                          }"
+                          data-coop-mode=${m.mode}
+                          @click=${() => (this.mode = m.mode)}
+                        >
+                          ${m.label}
+                        </button>`,
+                    )}
+                  </div>
+                  <div class="mt-2 text-xs text-white/60" data-coop-mode-info>
+                    ${MODES.find((m) => m.mode === this.mode)?.info} · Mapa:
+                    Mundo
                   </div>
                   <button
                     class="${btn} mt-3 w-full bg-amber-400 text-lg text-slate-900"

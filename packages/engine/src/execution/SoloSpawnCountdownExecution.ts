@@ -1,5 +1,6 @@
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import { PlayerType } from "@openfront/engine-api/game/GameTypes";
+import { areCoopPartners } from "@openfront/engine-lib/game/CoopDuo";
 import { PseudoRandom } from "@openfront/engine-lib/PseudoRandom";
 import { zNum } from "@openfront/engine-lib/snapshot/SnapshotType";
 import { simpleHash } from "@openfront/engine-lib/Util";
@@ -18,8 +19,12 @@ import { getSpawnTiles } from "./Util";
  * - Jogando junto (mais de um humano): todos têm um prazo desde o começo;
  *   quando todos escolhem, o prazo encurta para a mesma folga do solo. Quem
  *   não escolheu até o fim é colocado num lugar aleatório longe dos outros
- *   humanos.
+ *   humanos — ou perto do parceiro, quando jogam no mesmo lado (dupla ou
+ *   time contra as nações).
  */
+/** Distância (em tiles) a que quem não escolheu nasce do parceiro. */
+const NEAR_PARTNER = 60;
+
 export class SoloSpawnCountdownExecution implements Execution {
   private mg: Game | undefined;
 
@@ -68,15 +73,22 @@ export class SoloSpawnCountdownExecution implements Execution {
     mg.endSpawnPhase();
   }
 
-  /** Um lugar livre entre os mais distantes dos outros humanos. */
+  /**
+   * Um lugar livre entre os mais distantes dos outros humanos; se eles
+   * jogam do mesmo lado, entre os que ficam a uns NEAR_PARTNER tiles deles.
+   */
   private farTile(mg: Game, me: Player, humans: Player[]): TileRef | null {
     const random = new PseudoRandom(
       simpleHash(this.gameID) + simpleHash(me.id()) + mg.ticks(),
     );
-    const others = humans
-      .filter((h) => h !== me)
-      .map((h) => h.spawnTile())
-      .filter((t): t is TileRef => t !== undefined);
+    const gameConfig = mg.config().gameConfig();
+    const sameSide = (h: Player) =>
+      areCoopPartners(gameConfig, me, h) ||
+      (me.team() !== null && me.team() === h.team());
+    const spawnOf = (hs: Player[]) =>
+      hs.map((h) => h.spawnTile()).filter((t): t is TileRef => t !== undefined);
+    const partners = spawnOf(humans.filter((h) => h !== me && sameSide(h)));
+    const others = spawnOf(humans.filter((h) => h !== me && !sameSide(h)));
     const found: { tile: TileRef; score: number }[] = [];
     for (let i = 0; i < 1500 && found.length < 80; i++) {
       const tile = mg.ref(
@@ -86,9 +98,15 @@ export class SoloSpawnCountdownExecution implements Execution {
       if (!mg.isLand(tile) || mg.hasOwner(tile) || mg.isBorder(tile)) continue;
       if (!getSpawnTiles(mg, tile, true)) continue;
       const score =
-        others.length === 0
-          ? random.nextInt(0, 1000)
-          : Math.min(...others.map((o) => mg.manhattanDist(o, tile)));
+        partners.length > 0
+          ? -Math.min(
+              ...partners.map((o) =>
+                Math.abs(mg.manhattanDist(o, tile) - NEAR_PARTNER),
+              ),
+            )
+          : others.length === 0
+            ? random.nextInt(0, 1000)
+            : Math.min(...others.map((o) => mg.manhattanDist(o, tile)));
       found.push({ tile, score });
     }
     if (found.length === 0) return null;
