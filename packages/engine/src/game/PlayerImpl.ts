@@ -192,6 +192,8 @@ export class PlayerImpl implements Player {
   private lastMirvTick: Tick | null = null;
   /** MoWorld: tick do último MIRV lançado contra este jogador (proteção). */
   private lastMirvTargetedTick: Tick | null = null;
+  /** MoWorld: cabeças de ponte da passagem por aliado (ver Game.ts). */
+  private _passageBridgeheads = new Set<TileRef>();
   private lastEmbargoAllTick: Tick = -1;
 
   public _incomingAttacks: Attack[] = [];
@@ -582,6 +584,18 @@ export class PlayerImpl implements Player {
         this.sharesBorderWith(ally) &&
         ally.sharesBorderWith(target),
     );
+  }
+
+  addPassageBridgehead(tile: TileRef): void {
+    this._passageBridgeheads.add(tile);
+  }
+
+  passageBridgeheads(): ReadonlySet<TileRef> {
+    return this._passageBridgeheads;
+  }
+
+  removePassageBridgehead(tile: TileRef): void {
+    this._passageBridgeheads.delete(tile);
   }
 
   reachesByLand(target: Player): boolean {
@@ -2122,6 +2136,7 @@ export class PlayerImpl implements Player {
       ),
       lastMirvTick: this.lastMirvTick,
       lastMirvTargetedTick: this.lastMirvTargetedTick,
+      passageBridgeheads: Uint32Array.from(this._passageBridgeheads),
     };
   }
 
@@ -2198,6 +2213,7 @@ export class PlayerImpl implements Player {
     // Saves de antes da recarga do MIRV não têm o campo.
     this.lastMirvTick = s.lastMirvTick ?? null;
     this.lastMirvTargetedTick = s.lastMirvTargetedTick ?? null;
+    this._passageBridgeheads = new Set(s.passageBridgeheads ?? []);
     this.nearbyMemo = null;
   }
 }
@@ -2270,6 +2286,7 @@ export const PlayerSnapshot = snapshotType({
     numUnitsConstructed: z.array(z.tuple([UnitTypeSchema, zInt()])),
     lastMirvTick: zInt().nullable().optional(),
     lastMirvTargetedTick: zInt().nullable().optional(),
+    passageBridgeheads: zTiles().optional(),
   }),
 });
 export type PlayerState = z.infer<typeof PlayerSnapshot.schema>;

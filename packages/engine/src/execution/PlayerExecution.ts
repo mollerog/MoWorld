@@ -137,6 +137,12 @@ export class PlayerExecution implements Execution {
   }
 
   private removeClusters() {
+    // MoWorld: esquece as cabeças de ponte que o jogador já perdeu.
+    for (const t of this.player.passageBridgeheads()) {
+      if (this.map.ownerID(t) !== this.player.smallID()) {
+        this.player.removePassageBridgehead(t);
+      }
+    }
     // Perf: We fuse bounds calculations into the initial DFS flood, returning packed Int32Array bounds
     // instead of scanning every TileRef and allocating hundreds of Object {min, max} Cells.
     const { clusters, boxes } = this.calculateClusters();
@@ -817,6 +823,10 @@ export class PlayerExecution implements Execution {
     clusterBoxMaxY: number,
   ): number {
     let hasEnemy = false;
+    // MoWorld: bolsão de uma passagem por aliado que ainda encosta nele.
+    const bridgeheads = this.player.passageBridgeheads();
+    let hasBridgehead = false;
+    let touchesFriend = false;
     let minX = 1e9,
       minY = 1e9,
       maxX = -1e9,
@@ -828,11 +838,17 @@ export class PlayerExecution implements Execution {
       if (map.isShore(tr) || map.isOnEdgeOfMap(tr)) {
         return 0;
       }
+      if (!hasBridgehead && bridgeheads.size > 0 && bridgeheads.has(tr)) {
+        hasBridgehead = true;
+      }
       const numNeighbors = map.neighbors4(tr, this.nbuf);
       for (let i = 0; i < numNeighbors; i++) {
         const n = this.nbuf[i];
         const ownerId = map.ownerID(n);
         if (ownerId !== 0 && ownerId !== mySmallID) {
+          if (!touchesFriend && bridgeheads.size > 0) {
+            touchesFriend = this.isFriendlySmallID(ownerId);
+          }
           hasEnemy = true;
           const x = map.x(n);
           const y = map.y(n);
@@ -854,7 +870,7 @@ export class PlayerExecution implements Execution {
         }
       }
     }
-    if (!hasEnemy) {
+    if (!hasEnemy || (hasBridgehead && touchesFriend)) {
       return 0;
     }
     if (
@@ -866,6 +882,11 @@ export class PlayerExecution implements Execution {
       return CLUSTER_SURROUNDED;
     }
     return 0;
+  }
+
+  private isFriendlySmallID(smallID: number): boolean {
+    const other = this.mg.playerBySmallID(smallID);
+    return other.isPlayer() && this.player.isFriendly(other as Player);
   }
 
   private removeCluster(

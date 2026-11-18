@@ -446,6 +446,14 @@ export interface Player extends PlayerLike {
   passageAllies(target: Player): Player[];
   /** MoWorld: fronteira direta ou passagem por um aliado. */
   reachesByLand(target: Player): boolean;
+  /**
+   * MoWorld: tiles onde um exército desembarcou depois de passar por um
+   * aliado. O bolsão que contém um deles não é anexado enquanto encostar
+   * num aliado (PlayerExecution).
+   */
+  addPassageBridgehead(tile: TileRef): void;
+  passageBridgeheads(): ReadonlySet<TileRef>;
+  removePassageBridgehead(tile: TileRef): void;
   /** MoWorld: tick da última doação (tropas ou ouro) para esse jogador. */
   lastDonationTickTo(recipient: Player): number | null;
   relation(other: Player): Relation;

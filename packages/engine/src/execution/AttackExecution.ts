@@ -137,15 +137,9 @@ export class AttackExecution implements Execution {
       // combined total, turning the leftover fractions into free troops.
       this.startTroops = this._owner.removeTroops(this.startTroops);
     }
-    this.attack = this._owner.createAttack(
-      this.target,
-      this.startTroops,
-      this.sourceTile,
-      new Set<TileRef>(),
-    );
-
     // MoWorld: sem fronteira, mas um aliado faz fronteira com o alvo — as
     // tropas marcham por dentro dele e o ataque só começa quando chegarem.
+    // Antes de createAttack: senão sobra um ataque parado na lista.
     if (
       this.sourceTile === null &&
       this.target.isPlayer() &&
@@ -158,6 +152,13 @@ export class AttackExecution implements Execution {
       this.active = false;
       return;
     }
+
+    this.attack = this._owner.createAttack(
+      this.target,
+      this.startTroops,
+      this.sourceTile,
+      new Set<TileRef>(),
+    );
 
     if (this.sourceTile !== null) {
       this.addNeighbors(this.sourceTile);

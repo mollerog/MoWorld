@@ -7,6 +7,7 @@ import {
 } from "@openfront/engine-api/game/GameTypes";
 import { AttackExecution } from "@openfront/engine/execution/AttackExecution";
 import { BoatRetreatExecution } from "@openfront/engine/execution/BoatRetreatExecution";
+import { PlayerExecution } from "@openfront/engine/execution/PlayerExecution";
 import { Game, Player } from "@openfront/engine/game/Game";
 import { setup } from "./util/Setup";
 import { expectSnapshotRoundTrip } from "./util/Snapshot";
@@ -141,5 +142,80 @@ describe("MoWorld passagem por aliado", () => {
     const back = me.troops() - (troops - 20_000);
     expect(back).toBeGreaterThanOrEqual(15_000);
     expect(back).toBeLessThan(20_000 + 2_000);
+  });
+
+  test("a marcha não deixa um ataque parado na lista", () => {
+    me.createAllianceRequest(ally)?.accept();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 2);
+    expect(me.units(UnitType.Army)).toHaveLength(1);
+    expect(me.outgoingAttacks()).toHaveLength(0);
+    expect(enemy.incomingAttacks()).toHaveLength(0);
+  });
+
+  test("longe da borda do mapa, a cabeça de ponte não é anexada", () => {
+    // Tudo ocupado e longe da borda: o tile em que o exército desembarca
+    // fica cercado pelo inimigo e pelo aliado. Antes, a regra de enclave
+    // engolia esse tile e o ataque voltava sozinho.
+    for (let x = 0; x < game.width(); x++)
+      for (let y = 0; y < game.height(); y++) {
+        const t = game.ref(x, y);
+        if (!game.isLand(t)) continue;
+        if (x < 10) me.conquer(t);
+        else if (x < 20 && y >= 15 && y < 25) ally.conquer(t);
+        else enemy.conquer(t);
+      }
+    // Um terceiro neutro ocupa o resto do meio: só se chega pelo aliado.
+    game.addPlayer(new PlayerInfo("mid", PlayerType.Human, null, "mid_id"));
+    const mid = game.player("mid_id");
+    for (let x = 10; x < 20; x++)
+      for (let y = 0; y < game.height(); y++) {
+        if (y >= 15 && y < 25) continue;
+        const t = game.ref(x, y);
+        if (game.isLand(t)) mid.conquer(t);
+      }
+    expect(me.sharesBorderWith(enemy)).toBe(false);
+    for (const p of [me, ally, enemy, mid])
+      game.addExecution(new PlayerExecution(p));
+    me.createAllianceRequest(ally)?.accept();
+    const before = enemy.numTilesOwned();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 80);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(enemy.numTilesOwned()).toBeLessThan(before - 20);
+  });
+});
+
+describe("MoWorld enclaves", () => {
+  test("bolsão comum junto de aliado continua sendo anexado", async () => {
+    // Regra original: um pedaço meu cercado pelo inimigo e pelo aliado, que
+    // não veio de uma passagem, é anexado.
+    game = await setup("plains", { instantBuild: true });
+    for (const id of ["me_id", "ally_id", "enemy_id"])
+      game.addPlayer(new PlayerInfo(id, PlayerType.Human, null, id));
+    me = game.player("me_id");
+    ally = game.player("ally_id");
+    enemy = game.player("enemy_id");
+    for (let x = 0; x < game.width(); x++)
+      for (let y = 0; y < game.height(); y++) {
+        const t = game.ref(x, y);
+        if (!game.isLand(t)) continue;
+        if (x < 10) me.conquer(t);
+        else if (x < 20) ally.conquer(t);
+        else enemy.conquer(t);
+      }
+    for (const p of [me, ally, enemy]) p.addTroops(1_000);
+    while (game.inSpawnPhase()) game.executeNextTick();
+    for (const p of [me, ally, enemy])
+      game.addExecution(new PlayerExecution(p));
+    // A checagem de enclaves começa até 20 ticks depois (varia pelo id) e só
+    // roda quando o território muda: o bolsão nasce depois disso.
+    executeTicks(game, 25);
+    me.createAllianceRequest(ally)?.accept();
+    const pocket = game.ref(25, 20);
+    ally.conquer(game.ref(24, 20));
+    me.conquer(pocket);
+    executeTicks(game, 60);
+    expect(game.owner(pocket)).toBe(enemy);
   });
 });

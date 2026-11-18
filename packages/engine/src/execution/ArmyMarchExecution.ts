@@ -204,6 +204,8 @@ export class ArmyMarchExecution implements Execution {
   private landAndAttack(tile: TileRef, enemy: Player) {
     const mg = this.mg!;
     this.attacker.conquer(tile);
+    // Cercado pelo alvo e pelo aliado, o tile seria anexado na hora.
+    this.attacker.addPassageBridgehead(tile);
     mg.addExecution(
       new AttackExecution(this.troops, this.attacker, enemy.id(), tile, false),
     );
