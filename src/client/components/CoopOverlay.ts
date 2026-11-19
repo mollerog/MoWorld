@@ -1,22 +1,28 @@
 // MoWorld: avisos da partida "jogando junto" — pedido de pausa/despausa do
 // outro jogador (aceitar/recusar), "aguardando" para quem pediu, recusa e
-// queda da ligação.
+// queda da ligação (com reconexão automática: PeerReconnect).
 import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { homeHref } from "../Utils";
 import {
   answerPauseVote,
+  clearCoopResume,
   PAUSE_VOTE_EVENT,
   PauseVoteState,
+  PEER_BACK_EVENT,
   PEER_LOST_EVENT,
   peerSession,
 } from "../peer/PeerSession";
+import { homeHref } from "../Utils";
 
 @customElement("moworld-coop-overlay")
 export class CoopOverlay extends LitElement {
   @state() private vote: PauseVoteState | null = null;
   @state() private lost = false;
+  // Anfitrião que escolheu continuar sozinho: só um aviso pequeno.
+  @state() private alone = false;
+  @state() private back = false;
   private hideTimer = 0;
+  private backTimer = 0;
 
   createRenderRoot() {
     return this;
@@ -26,12 +32,14 @@ export class CoopOverlay extends LitElement {
     super.connectedCallback();
     window.addEventListener(PAUSE_VOTE_EVENT, this.onVote);
     window.addEventListener(PEER_LOST_EVENT, this.onLost);
+    window.addEventListener(PEER_BACK_EVENT, this.onBack);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener(PAUSE_VOTE_EVENT, this.onVote);
     window.removeEventListener(PEER_LOST_EVENT, this.onLost);
+    window.removeEventListener(PEER_BACK_EVENT, this.onBack);
   }
 
   private onVote = (e: Event) => {
@@ -46,7 +54,23 @@ export class CoopOverlay extends LitElement {
   private onLost = () => {
     if (!document.body.classList.contains("in-game")) return;
     this.lost = true;
+    this.alone = false;
+    this.back = false;
   };
+
+  private onBack = () => {
+    this.lost = false;
+    this.alone = false;
+    this.back = true;
+    window.clearTimeout(this.backTimer);
+    this.backTimer = window.setTimeout(() => (this.back = false), 2500);
+  };
+
+  private continueAlone() {
+    peerSession()?.continueAlone?.();
+    this.lost = false;
+    this.alone = true;
+  }
 
   private answer(accept: boolean) {
     answerPauseVote(accept);
@@ -57,32 +81,50 @@ export class CoopOverlay extends LitElement {
     const partner = peerSession()?.partnerName ?? "o outro jogador";
     const box =
       "fixed left-1/2 -translate-x-1/2 z-[10050] w-[min(92vw,380px)] rounded-2xl border border-white/15 bg-slate-950/95 p-3 text-white shadow-2xl backdrop-blur-md";
+    const isHost = peerSession()?.role === "host";
+    if (this.back) {
+      return html`<div class="${box} top-24 text-center" data-coop-back>
+        <div class="text-base font-extrabold">✅ ${partner} voltou</div>
+      </div>`;
+    }
+    if (this.alone) {
+      return html`<div
+        class="fixed left-1/2 top-24 z-[10050] -translate-x-1/2 rounded-full border border-white/15 bg-slate-950/90 px-3 py-1 text-xs text-white/80"
+        data-coop-alone
+      >
+        📡 Esperando ${partner} voltar…
+      </div>`;
+    }
     if (this.lost) {
       return html`<div class="${box} top-1/3" data-coop-lost>
-        <div class="text-base font-extrabold">📡 A conexão caiu</div>
+        <div class="text-base font-extrabold">📡 Reconectando…</div>
         <div class="mt-1 text-sm text-white/70">
-          A ligação com ${partner} foi perdida.
+          A ligação com ${partner} caiu.
           ${
-            peerSession()?.role === "host"
-              ? "Você pode continuar sozinho; a nação dele(a) fica parada."
-              : "Sem o aparelho de quem criou a sala, a partida não continua."
+            isHost
+              ? "O jogo fica pausado e volta sozinho quando reconectar."
+              : "O jogo volta sozinho quando reconectar."
           }
+          Se ${partner} fechou o app, é só abrir o MoWorld de novo e tocar em
+          “Voltar à partida”.
         </div>
         <div class="mt-3 flex gap-2">
           ${
-            peerSession()?.role === "host"
+            isHost
               ? html`<button
                   class="flex-1 rounded-xl bg-white/10 px-3 py-2 font-bold"
-                  @click=${() => (this.lost = false)}
+                  data-coop-alone-btn
+                  @click=${() => this.continueAlone()}
                 >
-                  Continuar
+                  Continuar sozinho
                 </button>`
               : nothing
           }
           <a
             class="flex-1 rounded-xl bg-amber-400 px-3 py-2 text-center font-extrabold text-slate-900"
             href=${homeHref()}
-            >Voltar ao início</a
+            @click=${() => clearCoopResume()}
+            >Encerrar</a
           >
         </div>
       </div>`;

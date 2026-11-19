@@ -19,23 +19,23 @@ import {
 } from "../../../client/Utils";
 import { fetchUserMeUncached, getUserMe, invalidateUserMe } from "../../Api";
 import { cosmeticSelectionLabel } from "../../components/CosmeticPresentation";
-import "../../components/CosmeticCard";
 import {
   ffaRatingGameOf,
   type FfaRatingGame,
   viewerHasFfaRating,
 } from "../../components/ffaRating/FfaRatingEligibility";
+import "../../components/CosmeticCard";
 import type { GameXpPanelState } from "../../components/GameXpPanel";
 import type { LegendCeremony } from "../../components/LegendCeremony";
 import { Controller } from "../../Controller";
-import "../../components/ProfileShare";
-import "../../components/PurchaseButton";
-import "../../components/SteamWishlist";
 import {
   fetchCosmetics,
   purchaseCosmetic,
   resolveCosmetics,
 } from "../../Cosmetics";
+import "../../components/ProfileShare";
+import "../../components/PurchaseButton";
+import "../../components/SteamWishlist";
 import { isDesktopShell } from "../../DesktopShell";
 import { gamePortal } from "../../GamePortal";
 import { lobbyPublicGameType } from "../../LobbyPublicGameType";
@@ -46,6 +46,7 @@ import {
   momentShareText,
   momentShareUrl,
 } from "../../MomentShare";
+import { clearCoopResume } from "../../peer/PeerSession";
 import { Platform } from "../../Platform";
 import { canPlayAgain, requestPlayAgain } from "../../PlayAgain";
 import { MAX_PRESTIGE, reachedLegendThisGame } from "../../Progression";
@@ -1154,7 +1155,11 @@ export class WinModal extends LitElement implements Controller {
     }
     const updates = this.game.updatesSinceLastTick();
     const winUpdates = updates?.[GameUpdateType.Win] ?? [];
-    if (winUpdates.length > 0) this.gameOverSeen = true;
+    if (winUpdates.length > 0) {
+      this.gameOverSeen = true;
+      // MoWorld: partida com amigos decidida: nada mais para retomar.
+      clearCoopResume();
+    }
     // Votes the result to the server. The result voted is what a figure from
     // the end is worked out from: a Win update this client doesn't vote
     // gives none.

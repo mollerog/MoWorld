@@ -1,11 +1,12 @@
-import { openCoopLobby } from "./components/CoopLobby";
 import { GameMapType, GameType } from "@openfront/engine-api/game/GameTypes";
 import { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { PublicGameInfo, PublicGames } from "@openfront/shared/WireSchemas";
 import { html, LitElement, nothing, type TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { ClientEnv } from "src/client/ClientEnv";
+import { currentUser } from "./Account";
 import { getDesktopSessionState } from "./Auth";
+import { openCoopLobby } from "./components/CoopLobby";
 import "./components/IOSAddToHomeScreenBanner";
 import {
   canJoinTrustedLobby,
@@ -33,6 +34,15 @@ import { whenModalLoaded } from "./LazyModals";
 import { PublicLobbySocket } from "./LobbySocket";
 import { JoinLobbyEvent } from "./Main";
 import {
+  clearHistory,
+  difficultyDisplayName,
+  loadHistory,
+  mapDisplayName,
+  type MatchRecord,
+} from "./MatchHistory";
+import { readCoopResume } from "./peer/PeerSession";
+import { listSavedGames } from "./SavedGamesApi";
+import {
   backendUnreachableConfirmed,
   isPinnedToAVersion,
   MANUAL_RETRY_COOLDOWN_MS,
@@ -41,15 +51,6 @@ import {
   retryServerList,
   type BackendReachabilityDetail,
 } from "./ServerList";
-import {
-  clearHistory,
-  difficultyDisplayName,
-  loadHistory,
-  mapDisplayName,
-  type MatchRecord,
-} from "./MatchHistory";
-import { currentUser } from "./Account";
-import { listSavedGames } from "./SavedGamesApi";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import { lastUserMeResponse } from "./UserMeBroadcast";
 import { UsernameInput } from "./UsernameInput";
@@ -235,7 +236,8 @@ export function reportMultiplayerRefusal(backendOutage: boolean): void {
   // no listener.
   (
     document.querySelector("desktop-status-bar") as
-      (HTMLElement & { wiggle?: () => void }) | null
+      | (HTMLElement & { wiggle?: () => void })
+      | null
   )?.wiggle?.();
   // Keyed on the shell, not on the element: <desktop-status-bar> is in
   // index.html on every build and simply renders nothing on the web, so its
@@ -690,6 +692,18 @@ export class GameModeSelector extends LitElement {
       "flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl";
     return html`
       <div class="flex flex-col gap-3 w-full px-4 pb-6 sm:px-0">
+        ${
+          readCoopResume()
+            ? html`<button
+                type="button"
+                data-moworld-coop-resume
+                @click=${() => openCoopLobby({ resume: true })}
+                class="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-400/50 bg-amber-400/15 px-4 py-3 font-extrabold text-amber-200 active:translate-y-px"
+              >
+                🤝 Voltar à partida com ${readCoopResume()?.partnerName}
+              </button>`
+            : nothing
+        }
         <div class="grid grid-cols-2 gap-2 sm:gap-3">
           <button
             type="button"
@@ -721,7 +735,9 @@ export class GameModeSelector extends LitElement {
             @click=${() => openCoopLobby()}
             class="relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-3 h-20 sm:h-24 rounded-2xl bg-sky-500 text-white shadow-[0_6px_0_#075985] transition-all hover:bg-sky-400 active:translate-y-1 active:shadow-[0_2px_0_#075985] disabled:opacity-50 disabled:pointer-events-none"
           >
-            <span class="text-xl sm:text-3xl leading-none" aria-hidden="true">🤝</span>
+            <span class="text-xl sm:text-3xl leading-none" aria-hidden="true"
+              >🤝</span
+            >
             <span
               class="text-base sm:text-3xl font-black tracking-[0.1em] sm:tracking-[0.18em] whitespace-nowrap leading-none"
               >COM AMIGOS</span

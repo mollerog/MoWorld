@@ -1,4 +1,3 @@
-import type { PeerSession } from "./peer/PeerSession";
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import {
   BuildableUnit,
@@ -55,6 +54,7 @@ import {
 import { rememberLobbyPublicGameType } from "./LobbyPublicGameType";
 import { rememberLobbyRoster } from "./LobbyRosterLevels";
 import { pagePin } from "./PagePin";
+import type { PeerSession } from "./peer/PeerSession";
 import { groupTokenOf, loggableStartMessage } from "./PresenceGroup";
 import {
   applyGraphicsOverrides,
@@ -102,7 +102,7 @@ import {
 import { createCanvas } from "./Utils";
 import { GameView, PlayerView } from "./view";
 import { WebGLFrameBuilder } from "./WebGLFrameBuilder";
-import { WorkerClient } from "./WorkerClient";
+import { readSnapshotHeader, WorkerClient } from "./WorkerClient";
 
 export interface LobbyConfig {
   cosmetics: PlayerCosmeticRefs;
@@ -127,6 +127,9 @@ export interface LobbyConfig {
   creatorToken?: string;
   // MoWorld: jogando junto por ligação direta (anfitrião ou convidado).
   peer?: PeerSession;
+  // MoWorld: voltando à partida com amigos por um save do outro aparelho: o
+  // primeiro turno que falta (= ticks já executados no save).
+  peerFirstTurn?: number;
 }
 
 export interface JoinLobbyResult {
@@ -1016,6 +1019,12 @@ export class ClientGameRunner {
     console.log("starting client game");
 
     this.isActive = true;
+    // MoWorld: voltando de um save da partida com amigos, a contagem de
+    // turnos continua de onde o save parou.
+    this.turnsSeen = this.lobby.peerFirstTurn ?? 0;
+    if (this.lobby.peer) {
+      this.lobby.peer.takeSnapshot = () => this.peerSnapshot();
+    }
     this.lastMessageTime = Date.now();
     this.metrics?.start();
     setTimeout(() => {
@@ -1234,7 +1243,24 @@ export class ClientGameRunner {
     this.transport.updateCallback(onconnect, onmessage);
     console.log("sending join game");
     // Rejoin game from the start so we don't miss any turns.
-    void this.transport.rejoinGame(0);
+    void this.transport.rejoinGame(this.turnsSeen);
+  }
+
+  /**
+   * MoWorld: save da partida para o outro aparelho continuar dali. No
+   * convidado, espera o motor executar todos os turnos que já chegaram: se o
+   * anfitrião caiu, só o convidado tem esses turnos, e o save precisa
+   * incluí-los. (O anfitrião guarda todos e manda os que faltarem.)
+   */
+  private async peerSnapshot(): Promise<{ bytes: Uint8Array; tick: number }> {
+    if (this.lobby.peer?.role === "guest") {
+      for (let i = 0; i < 80 && this.gameView.ticks() < this.turnsSeen; i++) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    }
+    const bytes = await this.worker.snapshot(ClientEnv.gitCommit());
+    const { tick } = await readSnapshotHeader(bytes);
+    return { bytes, tick };
   }
 
   public stop() {

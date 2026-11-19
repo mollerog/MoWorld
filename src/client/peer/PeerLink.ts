@@ -32,6 +32,12 @@ const ICE: RTCConfiguration = {
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CHUNK = 60_000;
 export const CONNECT_TIMEOUT_MS = 25_000;
+/**
+ * Sem nada do outro lado por esse tempo, a ligação conta como caída (o
+ * WebRTC sozinho pode levar ~30 s para perceber). Cobre também o app que
+ * volta de segundo plano: os timers voltam a rodar e notam o silêncio.
+ */
+export const SILENCE_TIMEOUT_MS = 10_000;
 
 export function randomRoomCode(): string {
   return Array.from(
@@ -58,6 +64,9 @@ export function firestoreSignaling(): Signaling {
   };
   return {
     async publishOffer(code, sdp) {
+      // Reconexão: a sala pode já existir (de uma tentativa anterior). As
+      // regras só deixam o anfitrião criar, então apaga a dele antes.
+      await deleteDoc(doc(db(), "p2pTests", code)).catch(() => {});
       await setDoc(doc(db(), "p2pTests", code), {
         host: currentUser()!.uid,
         offer: sdp,
@@ -92,10 +101,16 @@ export function broadcastSignaling(): Signaling {
   const offers = new Map<string, string>();
   const answers = new Map<string, string>();
   const listeners = new Map<string, (sdp: string) => void>();
+  // Só responde por uma sala quem publicou a oferta dela por último: outras
+  // instâncias (de ligações antigas) guardam ofertas velhas da mesma sala.
+  const mine = new Set<string>();
   bc.onmessage = (e) => {
     const m = e.data as { t: string; code: string; sdp?: string };
-    if (m.t === "offer" && m.sdp) offers.set(m.code, m.sdp);
-    if (m.t === "ask" && offers.has(m.code))
+    if (m.t === "offer" && m.sdp) {
+      offers.set(m.code, m.sdp);
+      mine.delete(m.code);
+    }
+    if (m.t === "ask" && mine.has(m.code))
       bc.postMessage({ t: "offer", code: m.code, sdp: offers.get(m.code) });
     if (m.t === "answer" && m.sdp) {
       answers.set(m.code, m.sdp);
@@ -105,6 +120,7 @@ export function broadcastSignaling(): Signaling {
   return {
     async publishOffer(code, sdp) {
       offers.set(code, sdp);
+      mine.add(code);
       bc.postMessage({ t: "offer", code, sdp });
     },
     onAnswer(code, cb) {
@@ -112,6 +128,7 @@ export function broadcastSignaling(): Signaling {
       return () => listeners.delete(code);
     },
     async readOffer(code) {
+      offers.delete(code);
       bc.postMessage({ t: "ask", code });
       for (let i = 0; i < 30 && !offers.has(code); i++) {
         await new Promise((r) => setTimeout(r, 100));
@@ -121,14 +138,17 @@ export function broadcastSignaling(): Signaling {
     async publishAnswer(code, sdp) {
       bc.postMessage({ t: "answer", code, sdp });
     },
-    async remove() {},
+    async remove(code) {
+      mine.delete(code);
+    },
   };
 }
 
+// Decidido ao carregar: a partida troca o endereço e o `?p2plocal` some.
+const LOCAL_SIGNALING = new URLSearchParams(location.search).has("p2plocal");
+
 export function defaultSignaling(): Signaling {
-  return new URLSearchParams(location.search).has("p2plocal")
-    ? broadcastSignaling()
-    : firestoreSignaling();
+  return LOCAL_SIGNALING ? broadcastSignaling() : firestoreSignaling();
 }
 
 // ---------------------------------------------------------------- ligação
@@ -161,6 +181,7 @@ export class PeerLink {
   private closed = false;
   public rtt: number | null = null;
   private pingTimer = 0;
+  private lastHeard = performance.now();
 
   private constructor(
     private pc: RTCPeerConnection,
@@ -175,15 +196,25 @@ export class PeerLink {
       }
     });
     this.pingTimer = window.setInterval(() => {
+      // Mandando muito (um save), as respostas do outro ficam na fila
+      // atrás: ocupado também conta como vivo.
+      if (this.ch.bufferedAmount > 0) this.lastHeard = performance.now();
+      if (performance.now() - this.lastHeard > SILENCE_TIMEOUT_MS) {
+        this.close();
+        return;
+      }
       this.sendJson({ k: "_ping", at: performance.now() });
     }, 2000);
   }
 
-  /** Cria a sala. `ready` resolve quando o outro aparelho conectar. */
+  /**
+   * Cria a sala. `ready` resolve quando o outro aparelho conectar. Com
+   * `code`, reabre a mesma sala (reconexão).
+   */
   static async host(
     signaling: Signaling,
+    code: string = randomRoomCode(),
   ): Promise<{ code: string; ready: Promise<PeerLink>; cancel: () => void }> {
-    const code = randomRoomCode();
     const pc = new RTCPeerConnection(ICE);
     const ch = pc.createDataChannel("moworld", { ordered: true });
     await pc.setLocalDescription(await pc.createOffer());
@@ -296,6 +327,7 @@ export class PeerLink {
   }
 
   private onRaw(data: unknown) {
+    this.lastHeard = performance.now();
     if (typeof data === "string") {
       const msg = JSON.parse(data) as Record<string, unknown>;
       if (msg.k === "_ping") {

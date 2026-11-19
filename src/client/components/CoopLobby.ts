@@ -18,7 +18,15 @@ import { accountStatus, initAccount, onAccountChange } from "../Account";
 import { ClientEnv } from "../ClientEnv";
 import type { JoinLobbyEvent } from "../Main";
 import { defaultSignaling, PeerLink } from "../peer/PeerLink";
-import { setPeerSession } from "../peer/PeerSession";
+import { reconnect } from "../peer/PeerReconnect";
+import {
+  clearCoopResume,
+  CoopResumeRecord,
+  PeerSession,
+  readCoopResume,
+  saveCoopResume,
+  setPeerSession,
+} from "../peer/PeerSession";
 import type { UsernameInput } from "../UsernameInput";
 import { validateUsername } from "../validations/username";
 
@@ -30,6 +38,7 @@ type Phase =
   | "host-ready"
   | "guest-ready"
   | "starting"
+  | "resuming"
   | "error";
 
 const DIFFS: [Difficulty, string][] = [
@@ -85,6 +94,11 @@ export class CoopLobby extends LitElement {
   @state() private mode: CoopMode = "duo";
   @state() private account = accountStatus();
   @state() private rtt: number | null = null;
+  // MoWorld: partida com amigos em andamento que dá para retomar.
+  @state() private resumable: CoopResumeRecord | null = readCoopResume();
+  /** Aberto pelo aviso da tela inicial: já começa a voltar à partida. */
+  public autoResume = false;
+  private stopResume: (() => void) | null = null;
 
   private link: PeerLink | null = null;
   private cancelHost: (() => void) | null = null;
@@ -103,7 +117,12 @@ export class CoopLobby extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.offAccount = onAccountChange(() => (this.account = accountStatus()));
-    void initAccount().then(() => (this.account = accountStatus()));
+    void initAccount().then(() => {
+      this.account = accountStatus();
+      if (this.autoResume && this.resumable && this.canUseRooms()) {
+        this.startResume(this.resumable);
+      }
+    });
     this.rttTimer = window.setInterval(() => {
       this.rtt = this.link?.rtt ?? null;
     }, 1000);
@@ -115,8 +134,101 @@ export class CoopLobby extends LitElement {
     window.clearInterval(this.rttTimer);
     if (!this.handedOff) {
       this.cancelHost?.();
+      this.stopResume?.();
       this.link?.close();
     }
+  }
+
+  private canUseRooms() {
+    return this.localTest || this.account === "signed-in";
+  }
+
+  // --------------------------------------------- voltar à partida em andamento
+
+  /**
+   * Volta a uma partida com amigos que estava rolando quando o app fechou:
+   * reabre a ligação pela mesma sala, pede ao outro aparelho um save da
+   * partida naquele momento e continua dali.
+   */
+  private startResume(r: CoopResumeRecord) {
+    this.error = "";
+    this.phase = "resuming";
+    this.partner = r.partnerName;
+    this.code = r.code;
+    this.stopResume = reconnect(r, (link) => {
+      this.stopResume = null;
+      this.onResumeLink(r, link);
+    });
+  }
+
+  private onResumeLink(r: CoopResumeRecord, link: PeerLink) {
+    this.link = link;
+    const session: PeerSession = {
+      role: r.role,
+      link,
+      partnerName: r.partnerName,
+      code: r.code,
+      guestClientID:
+        r.role === "host" ? r.gameStartInfo.players[1]?.clientID : undefined,
+    };
+    let tick: number | null = null;
+    const offs: Array<() => void> = [];
+    const done = () => offs.splice(0).forEach((f) => f());
+    offs.push(
+      link.onJson((m) => {
+        if (m.k === "state") tick = Number(m.tick);
+        if (m.k === "state-failed") {
+          done();
+          link.close();
+          this.fail("O outro aparelho não conseguiu mandar a partida.");
+        }
+      }),
+      // Antes do save podem chegar mensagens do jogo (o outro lado pedindo
+      // turnos): o jogo, quando abrir, responde a elas.
+      link.onBinary((bytes) => {
+        if (tick === null) return;
+        done();
+        this.finishResume(r, session, bytes, tick);
+      }),
+      link.onClose(() => {
+        if (this.handedOff) return;
+        done();
+        // Caiu no meio: tenta de novo.
+        this.startResume(r);
+      }),
+    );
+    link.sendJson({ k: "need-state" });
+  }
+
+  private finishResume(
+    r: CoopResumeRecord,
+    session: PeerSession,
+    snapshot: Uint8Array,
+    tick: number,
+  ) {
+    setPeerSession(session);
+    saveCoopResume(r);
+    this.dispatchJoin({
+      gameID: r.gameID,
+      gameStartInfo: r.gameStartInfo,
+      snapshot,
+      source: "singleplayer",
+      peer: session,
+      peerFirstTurn: tick,
+    });
+  }
+
+  private discardResume() {
+    clearCoopResume();
+    this.resumable = null;
+  }
+
+  private cancelResume() {
+    this.stopResume?.();
+    this.stopResume = null;
+    this.link?.close();
+    this.link = null;
+    this.phase = "idle";
   }
 
   private fail(msg: string) {
@@ -256,9 +368,17 @@ export class CoopLobby extends LitElement {
       role: "host" as const,
       link,
       partnerName: this.partner,
+      code: this.code,
       guestClientID: guestID,
     };
     setPeerSession(session);
+    saveCoopResume({
+      role: "host",
+      code: this.code,
+      gameID,
+      partnerName: this.partner,
+      gameStartInfo: info,
+    });
     link.sendJson({ k: "start", info });
     this.dispatchJoin({
       gameID,
@@ -271,8 +391,20 @@ export class CoopLobby extends LitElement {
   private startAsGuest(info: WireGameStartInfo) {
     const link = this.link;
     if (!link) return;
-    const session = { role: "guest" as const, link, partnerName: this.partner };
+    const session = {
+      role: "guest" as const,
+      link,
+      partnerName: this.partner,
+      code: this.code,
+    };
     setPeerSession(session);
+    saveCoopResume({
+      role: "guest",
+      code: this.code,
+      gameID: info.gameID,
+      partnerName: this.partner,
+      gameStartInfo: info,
+    });
     this.dispatchJoin({
       gameID: info.gameID,
       gameStartInfo: info,
@@ -319,38 +451,65 @@ export class CoopLobby extends LitElement {
                   Entre com Google (canto de cima da tela inicial) nos dois
                   aparelhos para usar salas.
                 </p>`
-              : idle
-                ? html`<div class="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      class="${btn} bg-amber-400 text-slate-900"
-                      data-coop-create
-                      @click=${() => this.create()}
-                    >
-                      Criar sala
-                    </button>
-                    <div class="flex gap-1">
-                      <input
-                        class="min-w-0 flex-1 rounded-xl bg-white/10 px-2 text-center font-mono text-lg uppercase tracking-widest"
-                        maxlength="6"
-                        placeholder="CÓDIGO"
-                        data-coop-code
-                        .value=${this.joinCode}
-                        @input=${(e: Event) =>
-                          (this.joinCode = (
-                            e.target as HTMLInputElement
-                          ).value)}
-                      />
+              : idle && this.resumable
+                ? html`<div
+                    class="mt-4 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3"
+                    data-coop-resumable
+                  >
+                    <div class="font-extrabold">
+                      🤝 Partida com ${this.resumable.partnerName} em andamento
+                    </div>
+                    <div class="mt-1 text-xs text-white/60">
+                      O outro aparelho precisa estar com a partida aberta.
+                    </div>
+                    <div class="mt-3 flex gap-2">
                       <button
-                        class="${btn} bg-sky-500 px-3"
-                        data-coop-join
-                        ?disabled=${this.joinCode.trim().length !== 6}
-                        @click=${() => this.join()}
+                        class="${btn} flex-1 bg-white/10 text-sm"
+                        @click=${() => this.discardResume()}
                       >
-                        Entrar
+                        Descartar
+                      </button>
+                      <button
+                        class="${btn} flex-1 bg-amber-400 text-slate-900"
+                        data-coop-resume
+                        @click=${() => this.startResume(this.resumable!)}
+                      >
+                        Voltar à partida
                       </button>
                     </div>
                   </div>`
-                : nothing
+                : idle
+                  ? html`<div class="mt-4 grid grid-cols-2 gap-2">
+                      <button
+                        class="${btn} bg-amber-400 text-slate-900"
+                        data-coop-create
+                        @click=${() => this.create()}
+                      >
+                        Criar sala
+                      </button>
+                      <div class="flex gap-1">
+                        <input
+                          class="min-w-0 flex-1 rounded-xl bg-white/10 px-2 text-center font-mono text-lg uppercase tracking-widest"
+                          maxlength="6"
+                          placeholder="CÓDIGO"
+                          data-coop-code
+                          .value=${this.joinCode}
+                          @input=${(e: Event) =>
+                            (this.joinCode = (
+                              e.target as HTMLInputElement
+                            ).value)}
+                        />
+                        <button
+                          class="${btn} bg-sky-500 px-3"
+                          data-coop-join
+                          ?disabled=${this.joinCode.trim().length !== 6}
+                          @click=${() => this.join()}
+                        >
+                          Entrar
+                        </button>
+                      </div>
+                    </div>`
+                  : nothing
           }
           ${
             this.phase === "creating" || this.phase === "joining"
@@ -450,6 +609,25 @@ export class CoopLobby extends LitElement {
               : nothing
           }
           ${
+            this.phase === "resuming"
+              ? html`<div class="mt-4" data-coop-resuming>
+                  <p class="text-sm text-white/80">
+                    Voltando à partida com ${this.partner}… (sala ${this.code})
+                  </p>
+                  <p class="mt-1 text-xs text-white/55">
+                    Esperando o outro aparelho. Ele precisa estar com a partida
+                    aberta.
+                  </p>
+                  <button
+                    class="${btn} mt-3 w-full bg-white/10 text-sm"
+                    @click=${() => this.cancelResume()}
+                  >
+                    Cancelar
+                  </button>
+                </div>`
+              : nothing
+          }
+          ${
             this.error
               ? html`<p class="mt-3 text-sm text-red-300">${this.error}</p>`
               : nothing
@@ -460,8 +638,9 @@ export class CoopLobby extends LitElement {
   }
 }
 
-export function openCoopLobby() {
-  if (!document.querySelector("moworld-coop-lobby")) {
-    document.body.appendChild(document.createElement("moworld-coop-lobby"));
-  }
+export function openCoopLobby(opts: { resume?: boolean } = {}) {
+  if (document.querySelector("moworld-coop-lobby")) return;
+  const el = document.createElement("moworld-coop-lobby") as CoopLobby;
+  el.autoResume = opts.resume === true;
+  document.body.appendChild(el);
 }

@@ -1,6 +1,4 @@
 import "./components/CoopOverlay";
-import { maybePlayAgain, rememberSoloConfig } from "./PlayAgain";
-import type { PeerSession } from "./peer/PeerSession";
 import { GAME_ID_REGEX } from "@openfront/engine-api/Schemas";
 import {
   isRewardClaimable,
@@ -22,7 +20,6 @@ import { ClientEnv } from "src/client/ClientEnv";
 import { renderNavVersion } from "src/client/GameVersion";
 import { responseHasLinkedIdentity } from "./AccountIdentity";
 import { adGatekeeper } from "./AdGatekeeper";
-import { startMatchHistorySync } from "./MatchHistory";
 import { loadAdmiral, onAdmiralMeasured } from "./Admiral";
 import { wasAdmitted } from "./AdmittedLobbies";
 import {
@@ -77,7 +74,6 @@ import {
   isSteamShell,
   type DesktopUpdateState,
 } from "./DesktopShell";
-import "./FeaturedStream";
 import {
   claimGameClientReload,
   loadGameClient,
@@ -90,14 +86,18 @@ import {
   shouldBlockJoin,
 } from "./GameModeSelector";
 import { gamePortal } from "./GamePortal";
+import "./FeaturedStream";
 import { GameStartingModal } from "./GameStartingModal";
 import { syncHashedEmail } from "./HashedEmail";
 import type { HelpModal } from "./HelpModal";
-import "./HomepagePromos";
 import type { HomepagePromos } from "./HomepagePromos";
 import type { HostLobbyModal as HostPrivateLobbyModal } from "./HostLobbyModal";
 import { showInGameAlert, showInGameConfirm } from "./InGameModal";
+import "./HomepagePromos";
 import type { JoinLobbyModal } from "./JoinLobbyModal";
+import { startMatchHistorySync } from "./MatchHistory";
+import type { PeerSession } from "./peer/PeerSession";
+import { maybePlayAgain, rememberSoloConfig } from "./PlayAgain";
 // The LangSelector class is used as a type; retain this for registration.
 // oxlint-disable-next-line import/no-duplicates -- Required custom-element registration.
 import "./LangSelector";
@@ -301,6 +301,8 @@ export interface JoinLobbyEvent {
   creatorToken?: string;
   // MoWorld: jogando junto por ligação direta.
   peer?: PeerSession;
+  // MoWorld: voltando por um save do outro aparelho (ver LobbyConfig).
+  peerFirstTurn?: number;
 }
 
 /**
@@ -1995,6 +1997,7 @@ class Client {
       spectator: lobby.spectator,
       creatorToken: lobby.creatorToken,
       peer: lobby.peer,
+      peerFirstTurn: lobby.peerFirstTurn,
     });
 
     if (this.mostRecentJoinEvent !== event.timeStamp) {

@@ -33,7 +33,9 @@ import {
   GameSpeedUpIntentEvent,
   ReplaySpeedChangeEvent,
 } from "./InputHandler";
-import { emitPauseVote, emitPeerLost } from "./peer/PeerSession";
+import type { PeerLink } from "./peer/PeerLink";
+import { stopPeerWatch, watchPeerLink } from "./peer/PeerReconnect";
+import { emitPauseVote } from "./peer/PeerSession";
 import { startSingleplayerHeartbeat } from "./SingleplayerHeartbeat";
 import {
   defaultReplaySpeedMultiplier,
@@ -84,6 +86,9 @@ export class LocalServer {
   // O convidado só recebe turnos depois de entrar (os anteriores vão no
   // "start" que ele recebe ao entrar).
   private guestJoined = false;
+  // Pausado sozinho porque a ligação caiu (despausa quando o outro voltar).
+  private pausedForPeer = false;
+  private unbindLink: Array<() => void> = [];
 
   constructor(
     private lobbyConfig: LobbyConfig,
@@ -160,6 +165,15 @@ export class LocalServer {
     if (!this.clientID) {
       throw new Error("missing clientID");
     }
+    // MoWorld: anfitrião voltando de um save do convidado: os turnos
+    // continuam a numeração de onde o save parou (os anteriores ficam
+    // vazios: ninguém mais precisa deles).
+    const firstTurn = this.lobbyConfig.peerFirstTurn ?? 0;
+    for (let i = this.turns.length; i < firstTurn; i++) {
+      this.turns.push({ turnNumber: i, intents: [] });
+    }
+    // Esses turnos já estão no save: não contam como atraso do cliente.
+    this.turnsExecuted = Math.max(this.turnsExecuted, firstTurn);
     this.clientMessage({
       type: "start",
       gameStartInfo: this.lobbyConfig.gameStartInfo,
@@ -171,7 +185,8 @@ export class LocalServer {
     this.wirePeerGuest();
     // A resumed game opens paused, so the player can get their bearings. The
     // pause turn is also the tick that brings the view up to the save.
-    if (this.lobbyConfig.snapshot !== undefined) {
+    // (Na partida com amigos não: os dois já estavam jogando.)
+    if (this.lobbyConfig.snapshot !== undefined && !this.peerHost()) {
       this.onMessage({
         type: "intent",
         intent: { type: "toggle_pause", paused: true },
@@ -295,34 +310,100 @@ export class LocalServer {
   private wirePeerGuest() {
     const p = this.peerHost();
     if (!p) return;
-    p.link.onClose(() => emitPeerLost());
-    const guestID = p.guestClientID!;
     p.answerVote = (accept) => this.answerVote(this.clientID!, accept);
-    p.link.onJson((m) => {
-      if (m.k === "pause-answer") this.answerVote(guestID, m.accept === true);
-    });
-    p.link.onBinary((bytes) => {
-      let msg: ClientMessage;
-      try {
-        msg = decodeClientMessage(bytes, undefined);
-      } catch (e) {
-        console.warn("peer: mensagem inválida do convidado", e);
-        return;
-      }
-      this.onGuestMessage(guestID, msg);
-    });
+    p.onRelink = (link) => {
+      // Ligação nova: o convidado ainda vai pedir os turnos que perdeu.
+      this.guestJoined = false;
+      this.bindGuestLink(link);
+    };
+    p.continueAlone = () => this.resumeAfterPeer();
+    this.bindGuestLink(p.link);
+    watchPeerLink(p, { onLost: () => this.pauseForPeer() });
+    // Voltando de um save do convidado: ele já está na partida, esperando.
+    if (this.lobbyConfig.peerFirstTurn !== undefined) {
+      this.sendStartToGuest(p.guestClientID!);
+    }
+  }
+
+  private bindGuestLink(link: PeerLink) {
+    for (const u of this.unbindLink.splice(0)) u();
+    const p = this.peerHost()!;
+    const guestID = p.guestClientID!;
+    this.unbindLink.push(
+      link.onJson((m) => {
+        if (m.k === "pause-answer") this.answerVote(guestID, m.accept === true);
+        // Quem fechou o app e voltou pede um save para continuar dali.
+        if (m.k === "need-state") void this.sendState(link);
+      }),
+      link.onBinary((bytes) => {
+        let msg: ClientMessage;
+        try {
+          msg = decodeClientMessage(bytes, undefined);
+        } catch (e) {
+          console.warn("peer: mensagem inválida do convidado", e);
+          return;
+        }
+        this.onGuestMessage(guestID, msg);
+      }),
+    );
+  }
+
+  private async sendState(link: PeerLink) {
+    const take = this.lobbyConfig.peer?.takeSnapshot;
+    if (!take) return;
+    try {
+      const { bytes, tick } = await take();
+      link.sendJson({ k: "state", tick });
+      link.sendBinary(bytes as Uint8Array<ArrayBuffer>);
+    } catch (e) {
+      console.warn("peer: não deu para mandar o save", e);
+      link.sendJson({ k: "state-failed" });
+    }
+  }
+
+  /** A ligação caiu: segura o jogo até o outro voltar. */
+  private pauseForPeer() {
+    this.guestJoined = false;
+    this.vote = null;
+    if (this.paused) return;
+    this.pausedForPeer = true;
+    this.intents.push({
+      type: "toggle_pause",
+      paused: true,
+      clientID: this.clientID!,
+    } as StampedIntent);
+    this.endTurn();
+    this.paused = true;
+  }
+
+  /** Despausa o que a queda pausou (o outro voltou, ou "continuar sozinho"). */
+  private resumeAfterPeer() {
+    if (!this.pausedForPeer) return;
+    this.pausedForPeer = false;
+    this.paused = false;
+    this.intents.push({
+      type: "toggle_pause",
+      paused: false,
+      clientID: this.clientID!,
+    } as StampedIntent);
+    this.endTurn();
+  }
+
+  private sendStartToGuest(guestID: ClientID) {
+    this.guestJoined = true;
+    this.sendToGuest({
+      type: "start",
+      gameStartInfo: this.lobbyConfig.gameStartInfo!,
+      turns: this.turns,
+      lobbyCreatedAt: this.lobbyConfig.gameStartInfo!.lobbyCreatedAt,
+      myClientID: guestID,
+    } satisfies ServerStartGameMessage);
   }
 
   private onGuestMessage(guestID: ClientID, msg: ClientMessage) {
     if (msg.type === "join" || msg.type === "rejoin") {
-      this.guestJoined = true;
-      this.sendToGuest({
-        type: "start",
-        gameStartInfo: this.lobbyConfig.gameStartInfo!,
-        turns: this.turns,
-        lobbyCreatedAt: this.lobbyConfig.gameStartInfo!.lobbyCreatedAt,
-        myClientID: guestID,
-      } satisfies ServerStartGameMessage);
+      this.sendStartToGuest(guestID);
+      this.resumeAfterPeer();
       return;
     }
     if (msg.type === "intent") {
@@ -435,6 +516,7 @@ export class LocalServer {
 
   public endGame() {
     console.log("local server ending game");
+    stopPeerWatch();
     this.lobbyConfig.peer?.link.close();
     clearInterval(this.turnCheckInterval);
     this.stopHeartbeat?.();

@@ -1,8 +1,3 @@
-import {
-  emitPauseVote,
-  emitPeerLost,
-  type PauseVoteState,
-} from "./peer/PeerSession";
 import { TileRef } from "@openfront/engine-api/game/GameMap";
 import {
   AllPlayers,
@@ -63,6 +58,9 @@ import {
   SendUpdateGameConfigIntentEvent,
 } from "./LobbyEvents";
 import { LocalServer } from "./LocalServer";
+import type { PeerLink } from "./peer/PeerLink";
+import { stopPeerWatch, watchPeerLink } from "./peer/PeerReconnect";
+import { emitPauseVote, type PauseVoteState } from "./peer/PeerSession";
 import { describeSocketClose } from "./SocketClose";
 import { homeHref, translateText } from "./Utils";
 import { PlayerView } from "./view";
@@ -476,22 +474,52 @@ export class Transport {
     const peer = this.lobbyConfig.peer!;
     this.onconnect = onconnect;
     this.onmessage = onmessage;
+    this.bindHostLink(peer.link);
+    // Depois de uma queda: a ligação nova entra no lugar e o jogo pede de
+    // novo os turnos a partir do último que viu (onconnect → rejoinGame).
+    peer.onRelink = (link) => {
+      this.bindHostLink(link);
+      this.onconnect();
+    };
+    if (!this.peerWatching) {
+      this.peerWatching = true;
+      watchPeerLink(peer);
+    }
+    this.isSessionReady = true;
+    onconnect();
+  }
+
+  private peerWatching = false;
+
+  private bindHostLink(link: PeerLink) {
     for (const u of this.peerUnsubs.splice(0)) u();
     this.peerUnsubs.push(
-      peer.link.onBinary((bytes) => {
+      link.onBinary((bytes) => {
         try {
           this.onmessage(decodeServerMessage(bytes, undefined));
         } catch (e) {
           console.warn("peer: mensagem inválida do anfitrião", e);
         }
       }),
-      peer.link.onJson((m) => {
+      link.onJson((m) => {
         if (m.k === "pause-vote") emitPauseVote(m.v as PauseVoteState);
+        // O anfitrião fechou o app e voltou: continua de um save meu.
+        if (m.k === "need-state") void this.sendPeerState(link);
       }),
-      peer.link.onClose(() => emitPeerLost()),
     );
-    this.isSessionReady = true;
-    onconnect();
+  }
+
+  private async sendPeerState(link: PeerLink) {
+    const take = this.lobbyConfig.peer?.takeSnapshot;
+    if (!take) return;
+    try {
+      const { bytes, tick } = await take();
+      link.sendJson({ k: "state", tick });
+      link.sendBinary(bytes as Uint8Array<ArrayBuffer>);
+    } catch (e) {
+      console.warn("peer: não deu para mandar o save", e);
+      link.sendJson({ k: "state-failed" });
+    }
   }
 
   private connectRemote(
@@ -806,6 +834,7 @@ export class Transport {
       return;
     }
     if (this.isPeerGuest) {
+      stopPeerWatch();
       for (const u of this.peerUnsubs.splice(0)) u();
       this.lobbyConfig.peer?.link.close();
       return;
