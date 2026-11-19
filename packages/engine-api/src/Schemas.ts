@@ -35,6 +35,7 @@ export type Intent =
   | EmojiIntent
   | DonateGoldIntent
   | DonateTroopsIntent
+  | AskAllyAidIntent
   | BuildUnitIntent
   | EmbargoIntent
   | QuickChatIntent
@@ -61,6 +62,7 @@ export type TargetPlayerIntent = z.infer<typeof TargetPlayerIntentSchema>;
 export type EmojiIntent = z.infer<typeof EmojiIntentSchema>;
 export type DonateGoldIntent = z.infer<typeof DonateGoldIntentSchema>;
 export type DonateTroopsIntent = z.infer<typeof DonateTroopIntentSchema>;
+export type AskAllyAidIntent = z.infer<typeof AskAllyAidIntentSchema>;
 export type EmbargoIntent = z.infer<typeof EmbargoIntentSchema>;
 export type BuildUnitIntent = z.infer<typeof BuildUnitIntentSchema>;
 export type UpgradeStructureIntent = z.infer<
@@ -494,6 +496,13 @@ export const DonateTroopIntentSchema = z.object({
   troops: zb.float({ min: 0 }).nullable(),
 });
 
+// MoWorld: pedir tropas ou ouro a uma nação aliada (AskAllyAidExecution).
+export const AskAllyAidIntentSchema = z.object({
+  type: z.literal("ask_ally_aid"),
+  recipient: MappedID,
+  kind: z.enum(["troops", "gold"]),
+});
+
 export const BuildUnitIntentSchema = z.object({
   type: z.literal("build_unit"),
   unit: z.enum(UnitType),
@@ -585,6 +594,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   EmojiIntentSchema,
   DonateGoldIntentSchema,
   DonateTroopIntentSchema,
+  AskAllyAidIntentSchema,
   BuildUnitIntentSchema,
   UpgradeStructureIntentSchema,
   EmbargoIntentSchema,

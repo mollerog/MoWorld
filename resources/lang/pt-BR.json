@@ -855,6 +855,10 @@
     "turnstile_error": "Erro de verificação: {code}. Por favor, atualize e tente novamente."
   },
   "events_display": {
+    "ally_aid_refused_relation": "{name} recusou ajudar: a relação de vocês ainda não é amigável",
+    "ally_aid_refused_cooldown": "{name} recusou: você pediu ajuda há pouco (a amizade esfriou)",
+    "ally_aid_refused_no_troops": "{name} recusou: está sem tropas sobrando",
+    "ally_aid_refused_no_gold": "{name} recusou: está sem ouro sobrando",
     "about_to_expire": "A sua aliança com {name} está próxima de expirar!",
     "accept_alliance": "Aceitar",
     "alliance_accepted": "aceito",
@@ -1753,6 +1757,10 @@
     "tps_avg_60s": "Média:"
   },
   "player_panel": {
+    "ask_troops": "Pedir tropas",
+    "ask_troops_title": "Pedir tropas a este aliado (esfria um pouco a amizade)",
+    "ask_gold": "Pedir ouro",
+    "ask_gold_title": "Pedir ouro a este aliado (esfria um pouco a amizade)",
     "active": "Ativo",
     "alliance_time_remaining": "Aliança acaba em",
     "alliances": "Alianças",

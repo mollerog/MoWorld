@@ -30,6 +30,7 @@ import { loadTerrainMap } from "@openfront/engine-lib/game/TerrainMapLoader";
 import { PseudoRandom } from "@openfront/engine-lib/PseudoRandom";
 import { simpleHash } from "@openfront/engine-lib/Util";
 import { EngineConfig } from "./configuration/EngineConfig";
+import { canAskAllyAid } from "./execution/AskAllyAidExecution";
 import { DoomsdayClockExecution } from "./execution/DoomsdayClockExecution";
 import { Executor } from "./execution/ExecutionManager";
 import { RecomputeRailClusterExecution } from "./execution/RecomputeRailClusterExecution";
@@ -389,6 +390,7 @@ export class GameRunner {
           !areCoopPartners(this.game.config().gameConfig(), player, other),
         canDonateGold: player.canDonateGold(other),
         canDonateTroops: player.canDonateTroops(other),
+        canAskAllyAid: canAskAllyAid(this.game, player, other),
         canEmbargo: !player.hasEmbargoAgainst(other),
         allianceInfo: player.allianceInfo(other) ?? undefined,
       };

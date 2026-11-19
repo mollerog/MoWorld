@@ -1153,6 +1153,10 @@
     "turnstile_error": "Verification error: {code}. Please refresh and try again."
   },
   "events_display": {
+    "ally_aid_refused_relation": "{name} refused to help: your relation is not friendly yet",
+    "ally_aid_refused_cooldown": "{name} refused: you asked for help too recently (the friendship cooled)",
+    "ally_aid_refused_no_troops": "{name} refused: no troops to spare",
+    "ally_aid_refused_no_gold": "{name} refused: no gold to spare",
     "about_to_expire": "Your alliance with {name} is about to expire!",
     "accept_alliance": "Accept",
     "alliance_accepted": "accepted",
@@ -2276,6 +2280,10 @@
     "tps_avg_60s": "Avg:"
   },
   "player_panel": {
+    "ask_troops": "Ask troops",
+    "ask_troops_title": "Ask this ally for troops (cools the friendship a little)",
+    "ask_gold": "Ask gold",
+    "ask_gold_title": "Ask this ally for gold (cools the friendship a little)",
     "active": "Active",
     "alliance_time_remaining": "Alliance Expires In",
     "alliances": "Alliances",

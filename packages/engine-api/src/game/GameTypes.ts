@@ -444,6 +444,8 @@ export interface PlayerInteraction {
   canSendEmoji: boolean;
   canSendAllianceRequest: boolean;
   canBreakAlliance: boolean;
+  // MoWorld: pedir tropas/ouro a esta nação aliada (AskAllyAidExecution).
+  canAskAllyAid?: boolean;
   canTarget: boolean;
   canDonateGold: boolean;
   canDonateTroops: boolean;

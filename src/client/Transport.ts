@@ -152,6 +152,14 @@ export class SendTargetPlayerIntentEvent implements GameEvent {
   constructor(public readonly targetID: PlayerID) {}
 }
 
+/** MoWorld: pedir tropas ou ouro a uma nação aliada. */
+export class SendAskAllyAidIntentEvent implements GameEvent {
+  constructor(
+    public readonly nationID: PlayerID,
+    public readonly kind: "troops" | "gold",
+  ) {}
+}
+
 export class SendEmojiIntentEvent implements GameEvent {
   constructor(
     public readonly recipient: PlayerView | typeof AllPlayers,
@@ -338,6 +346,13 @@ export class Transport {
     );
     this.subscribe(SendTargetPlayerIntentEvent, (e) =>
       this.onSendTargetPlayerIntent(e),
+    );
+    this.subscribe(SendAskAllyAidIntentEvent, (e) =>
+      this.sendIntent({
+        type: "ask_ally_aid",
+        recipient: e.nationID,
+        kind: e.kind,
+      }),
     );
     this.subscribe(SendEmojiIntentEvent, (e) => this.onSendEmojiIntent(e));
     this.subscribe(SendDonateGoldIntentEvent, (e) =>

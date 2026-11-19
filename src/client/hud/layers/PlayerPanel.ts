@@ -44,6 +44,7 @@ import {
   SendEmbargoAllIntentEvent,
   SendEmbargoIntentEvent,
   SendEmojiIntentEvent,
+  SendAskAllyAidIntentEvent,
   SendTargetPlayerIntentEvent,
 } from "../../Transport";
 import { UIState } from "../../UIState";
@@ -450,6 +451,17 @@ export class PlayerPanel extends LitElement implements Controller {
     }
 
     this.ctModal.open(sender, other);
+    this.hide();
+  }
+
+  // MoWorld: pedir ajuda à nação aliada (a resposta chega como mensagem).
+  private handleAskAidClick(
+    e: Event,
+    other: PlayerView,
+    kind: "troops" | "gold",
+  ) {
+    e.stopPropagation();
+    this.eventBus.emit(new SendAskAllyAidIntentEvent(other.id(), kind));
     this.hide();
   }
 
@@ -983,6 +995,8 @@ export class PlayerPanel extends LitElement implements Controller {
     const canBreakAlliance = this.actions?.interaction?.canBreakAlliance;
     const canTarget = this.actions?.interaction?.canTarget;
     const canEmbargo = this.actions?.interaction?.canEmbargo;
+    // MoWorld: pedir tropas/ouro à nação aliada (linha própria, abaixo).
+    const canAskAid = this.actions?.interaction?.canAskAllyAid === true;
 
     return html`
       <div class="flex flex-col gap-2.5">
@@ -1046,6 +1060,30 @@ export class PlayerPanel extends LitElement implements Controller {
               : ""
           }
         </div>
+        ${
+          canAskAid
+            ? html`<div class="grid grid-cols-2 gap-1" data-ask-ally-aid>
+                ${actionButton({
+                  onClick: (e: MouseEvent) =>
+                    this.handleAskAidClick(e, other, "troops"),
+                  icon: donateTroopIcon,
+                  iconAlt: "Troops",
+                  title: translateText("player_panel.ask_troops_title"),
+                  label: translateText("player_panel.ask_troops"),
+                  type: "normal",
+                })}
+                ${actionButton({
+                  onClick: (e: MouseEvent) =>
+                    this.handleAskAidClick(e, other, "gold"),
+                  icon: donateGoldIcon,
+                  iconAlt: "Gold",
+                  title: translateText("player_panel.ask_gold_title"),
+                  label: translateText("player_panel.ask_gold"),
+                  type: "normal",
+                })}
+              </div>`
+            : ""
+        }
         <ui-divider></ui-divider>
         ${
           other === my

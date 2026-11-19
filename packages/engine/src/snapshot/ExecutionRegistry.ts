@@ -11,6 +11,7 @@ import { ConstructionExecutionSnapshot } from "../execution/ConstructionExecutio
 import { DefensePostExecutionSnapshot } from "../execution/DefensePostExecution";
 import { DeleteUnitExecutionSnapshot } from "../execution/DeleteUnitExecution";
 import { DonateGoldExecutionSnapshot } from "../execution/DonateGoldExecution";
+import { AskAllyAidExecutionSnapshot } from "../execution/AskAllyAidExecution";
 import { DonateTroopsExecutionSnapshot } from "../execution/DonateTroopExecution";
 import { DoomsdayClockExecutionSnapshot } from "../execution/DoomsdayClockExecution";
 import { EmbargoAllExecutionSnapshot } from "../execution/EmbargoAllExecution";
@@ -59,6 +60,7 @@ export const EXECUTION_SNAPSHOT_TYPES = [
   AllianceRejectExecutionSnapshot,
   AllianceRequestExecutionSnapshot,
   ArmyMarchExecutionSnapshot,
+  AskAllyAidExecutionSnapshot,
   AttackExecutionSnapshot,
   BoatRetreatExecutionSnapshot,
   BreakAllianceExecutionSnapshot,

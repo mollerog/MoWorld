@@ -16,6 +16,7 @@ import { BoatRetreatExecution } from "./BoatRetreatExecution";
 import { ConstructionExecution } from "./ConstructionExecution";
 import { DeleteUnitExecution } from "./DeleteUnitExecution";
 import { DonateGoldExecution } from "./DonateGoldExecution";
+import { AskAllyAidExecution } from "./AskAllyAidExecution";
 import { DonateTroopsExecution } from "./DonateTroopExecution";
 import { EmbargoAllExecution } from "./EmbargoAllExecution";
 import { EmbargoExecution } from "./EmbargoExecution";
@@ -109,6 +110,8 @@ export class Executor {
         );
       case "donate_gold":
         return new DonateGoldExecution(player, intent.recipient, intent.gold);
+      case "ask_ally_aid":
+        return new AskAllyAidExecution(player, intent.recipient, intent.kind);
       case "embargo":
         return new EmbargoExecution(player, intent.targetID, intent.action);
       case "embargo_all":
