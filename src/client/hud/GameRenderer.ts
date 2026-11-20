@@ -18,16 +18,23 @@ import { UIState } from "../UIState";
 // The homepage loads it on demand, but the in-game instance (#game-settings)
 // is set up below, so it has to be defined by the time a game renders.
 import "../UserSettingModal";
+import { GameType } from "@openfront/engine-api/game/GameTypes";
+import { maybeShowGestureGuide } from "../components/GestureGuide";
+import { MatchHistoryRecorder } from "../MatchHistory";
+import { peerSession } from "../peer/PeerSession";
 import type { UserSettingModal } from "../UserSettingModal";
 import { UserSettings } from "../UserSettings";
 import { GameView } from "../view";
 import { FrameProfiler } from "./FrameProfiler";
 import { ActionableEvents } from "./layers/ActionableEvents";
 import { AlertFrame } from "./layers/AlertFrame";
+import { AttackAlert } from "./layers/AttackAlert";
 import { AttacksDisplay } from "./layers/AttacksDisplay";
+import { AutoSave } from "./layers/AutoSave";
 import { BuildMenu } from "./layers/BuildMenu";
 import { ChatDisplay } from "./layers/ChatDisplay";
 import { ChatModal } from "./layers/ChatModal";
+import { ControlBar } from "./layers/ControlBar";
 import { ControlPanel } from "./layers/ControlPanel";
 import { EmojiTable } from "./layers/EmojiTable";
 import { EventsDisplay } from "./layers/EventsDisplay";
@@ -39,6 +46,7 @@ import { InGamePromo } from "./layers/InGamePromo";
 import { MainRadialMenu } from "./layers/MainRadialMenu";
 import { MultiTabModal } from "./layers/MultiTabModal";
 import { NewLobbyPrompt } from "./layers/NewLobbyPrompt";
+import { NukeBatchBar } from "./layers/NukeBatchBar";
 import { OnboardingOverlay } from "./layers/OnboardingOverlay";
 import { PerformanceOverlay } from "./layers/PerformanceOverlay";
 import { PlayerInfoOverlay } from "./layers/PlayerInfoOverlay";
@@ -46,14 +54,6 @@ import { PlayerPanel } from "./layers/PlayerPanel";
 import { ReplayPanel } from "./layers/ReplayPanel";
 import { SettingsModal } from "./layers/SettingsModal";
 import { SpawnTimer } from "./layers/SpawnTimer";
-import { ControlBar } from "./layers/ControlBar";
-import { MatchHistoryRecorder } from "../MatchHistory";
-import { AttackAlert } from "./layers/AttackAlert";
-import { AutoSave } from "./layers/AutoSave";
-import { maybeShowGestureGuide } from "../components/GestureGuide";
-import { peerSession } from "../peer/PeerSession";
-import { GameType } from "@openfront/engine-api/game/GameTypes";
-import { NukeBatchBar } from "./layers/NukeBatchBar";
 import { TargetPopup } from "./layers/TargetPopup";
 import { TotalVictory } from "./layers/TotalVictory";
 import { TutorialPanel } from "./layers/TutorialPanel";
@@ -339,6 +339,7 @@ export function createRenderer(
     console.error("control bar not found");
   }
   controlBar.game = game;
+  controlBar.eventBus = eventBus;
 
   // MoWorld: pop-up de alvo no toque rápido (celular).
   const targetPopup = document.querySelector(

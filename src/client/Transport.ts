@@ -152,6 +152,11 @@ export class SendTargetPlayerIntentEvent implements GameEvent {
   constructor(public readonly targetID: PlayerID) {}
 }
 
+/** MoWorld: liga/desliga a expansão automática. */
+export class SendSetAutoExpandIntentEvent implements GameEvent {
+  constructor(public readonly enabled: boolean) {}
+}
+
 /** MoWorld: pedir tropas ou ouro a uma nação aliada. */
 export class SendAskAllyAidIntentEvent implements GameEvent {
   constructor(
@@ -346,6 +351,9 @@ export class Transport {
     );
     this.subscribe(SendTargetPlayerIntentEvent, (e) =>
       this.onSendTargetPlayerIntent(e),
+    );
+    this.subscribe(SendSetAutoExpandIntentEvent, (e) =>
+      this.sendIntent({ type: "auto_expand", enabled: e.enabled }),
     );
     this.subscribe(SendAskAllyAidIntentEvent, (e) =>
       this.sendIntent({

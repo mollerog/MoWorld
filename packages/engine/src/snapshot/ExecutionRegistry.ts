@@ -4,6 +4,7 @@ import { AllianceRejectExecutionSnapshot } from "../execution/alliance/AllianceR
 import { AllianceRequestExecutionSnapshot } from "../execution/alliance/AllianceRequestExecution";
 import { BreakAllianceExecutionSnapshot } from "../execution/alliance/BreakAllianceExecution";
 import { ArmyMarchExecutionSnapshot } from "../execution/ArmyMarchExecution";
+import { AskAllyAidExecutionSnapshot } from "../execution/AskAllyAidExecution";
 import { AttackExecutionSnapshot } from "../execution/AttackExecution";
 import { BoatRetreatExecutionSnapshot } from "../execution/BoatRetreatExecution";
 import { CityExecutionSnapshot } from "../execution/CityExecution";
@@ -11,7 +12,6 @@ import { ConstructionExecutionSnapshot } from "../execution/ConstructionExecutio
 import { DefensePostExecutionSnapshot } from "../execution/DefensePostExecution";
 import { DeleteUnitExecutionSnapshot } from "../execution/DeleteUnitExecution";
 import { DonateGoldExecutionSnapshot } from "../execution/DonateGoldExecution";
-import { AskAllyAidExecutionSnapshot } from "../execution/AskAllyAidExecution";
 import { DonateTroopsExecutionSnapshot } from "../execution/DonateTroopExecution";
 import { DoomsdayClockExecutionSnapshot } from "../execution/DoomsdayClockExecution";
 import { EmbargoAllExecutionSnapshot } from "../execution/EmbargoAllExecution";
@@ -33,9 +33,10 @@ import { RecomputeRailClusterExecutionSnapshot } from "../execution/RecomputeRai
 import { RetreatExecutionSnapshot } from "../execution/RetreatExecution";
 import { SAMLauncherExecutionSnapshot } from "../execution/SAMLauncherExecution";
 import { SAMMissileExecutionSnapshot } from "../execution/SAMMissileExecution";
+import { SetAutoExpandExecutionSnapshot } from "../execution/SetAutoExpandExecution";
 import { ShellExecutionSnapshot } from "../execution/ShellExecution";
-import { SpawnExecutionSnapshot } from "../execution/SpawnExecution";
 import { SoloSpawnCountdownExecutionSnapshot } from "../execution/SoloSpawnCountdownExecution";
+import { SpawnExecutionSnapshot } from "../execution/SpawnExecution";
 import { SpawnTimerExecutionSnapshot } from "../execution/SpawnTimerExecution";
 import { TargetPlayerExecutionSnapshot } from "../execution/TargetPlayerExecution";
 import { TradeShipExecutionSnapshot } from "../execution/TradeShipExecution";
@@ -61,6 +62,7 @@ export const EXECUTION_SNAPSHOT_TYPES = [
   AllianceRequestExecutionSnapshot,
   ArmyMarchExecutionSnapshot,
   AskAllyAidExecutionSnapshot,
+  SetAutoExpandExecutionSnapshot,
   AttackExecutionSnapshot,
   BoatRetreatExecutionSnapshot,
   BreakAllianceExecutionSnapshot,

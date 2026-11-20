@@ -5,9 +5,11 @@
 // sua posição no ranking e o principal rival (o 1º lugar, ou o 2º quando o
 // 1º é você).
 import { renderNumber } from "@openfront/engine-lib/Format";
+import { EventBus } from "@openfront/shared/EventBus";
 import { html, LitElement, nothing } from "lit";
 import { customElement } from "lit/decorators.js";
 import { Controller } from "../../Controller";
+import { SendSetAutoExpandIntentEvent } from "../../Transport";
 import { GameView, PlayerView } from "../../view";
 import { SpawnClock } from "../SpawnClock";
 
@@ -21,11 +23,35 @@ type Snapshot = {
   chip: { icon: string; label: string; seconds: number } | null;
 };
 
+// MoWorld: a escolha da expansão automática vale para as próximas partidas.
+const AUTO_EXPAND_KEY = "moworld.autoExpand";
+function readAutoExpandPref(): boolean {
+  try {
+    return localStorage.getItem(AUTO_EXPAND_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 @customElement("moworld-control-bar")
 export class ControlBar extends LitElement implements Controller {
   public game!: GameView;
+  public eventBus: EventBus | null = null;
 
   private snap: Snapshot | null = null;
+  private autoExpand = readAutoExpandPref();
+  private autoExpandSent = false;
+
+  private setAutoExpand(on: boolean) {
+    this.autoExpand = on;
+    try {
+      localStorage.setItem(AUTO_EXPAND_KEY, on ? "1" : "0");
+    } catch {
+      /* sem armazenamento: vale só nesta partida */
+    }
+    this.eventBus?.emit(new SendSetAutoExpandIntentEvent(on));
+    this.requestUpdate();
+  }
 
   createRenderRoot() {
     return this;
@@ -39,6 +65,13 @@ export class ControlBar extends LitElement implements Controller {
 
   tick() {
     const me = this.game.myPlayer();
+    // Liga no começo da partida, se ficou ligada da última vez.
+    if (!this.autoExpandSent && me !== null && this.eventBus) {
+      this.autoExpandSent = true;
+      if (this.autoExpand) {
+        this.eventBus.emit(new SendSetAutoExpandIntentEvent(true));
+      }
+    }
     if (me === null || !me.isAlive()) {
       if (this.snap !== null) {
         this.snap = null;
@@ -72,8 +105,12 @@ export class ControlBar extends LitElement implements Controller {
       };
     } else {
       const left = cfg.spawnImmunityDuration() - this.game.ticksSinceStart();
+      // MoWorld: trégua do começo (as nações não atacam você).
+      const truce = cfg.humanTruceSeconds() * 10 - this.game.ticksSinceStart();
       if (left > 0) {
         chip = { icon: "🛡", label: "Proteção", seconds: left / 10 };
+      } else if (truce > 0) {
+        chip = { icon: "🕊️", label: "Trégua", seconds: truce / 10 };
       }
     }
 
@@ -170,9 +207,21 @@ export class ControlBar extends LitElement implements Controller {
         >
           <!-- Celular deitado: o tempo de jogo fica aqui (sai do painel da
                direita, para o card caber centralizado). -->
-          <span class="mw-cb-time mr-auto tabular-nums text-white"
+          <span class="mw-cb-time tabular-nums text-white"
             >⏱ ${this.clock(s.elapsed)}</span
           >
+          <button
+            class="pointer-events-auto mr-auto rounded-full px-2 py-0.5 font-bold ${
+              this.autoExpand
+                ? "bg-emerald-500/25 text-emerald-300"
+                : "bg-white/10 text-slate-400"
+            }"
+            data-moworld-auto-expand
+            title="Expansão automática: cresce sozinho para a terra livre e as tribos vizinhas (nunca ataca nações nem pessoas)"
+            @click=${() => this.setAutoExpand(!this.autoExpand)}
+          >
+            🌱 Auto ${this.autoExpand ? "ligado" : "desligado"}
+          </button>
           ${
             s.rival
               ? html`<span>${s.rival.first ? "👑" : "2º"}</span>

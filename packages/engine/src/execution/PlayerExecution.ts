@@ -22,10 +22,16 @@ import type {
   SnapshotReader,
   SnapshotWriter,
 } from "../snapshot/SnapshotContext";
+import { AttackExecution } from "./AttackExecution";
 
 const TICKS_PER_CLUSTER_CALC = 20;
 
 const CLUSTER_SURROUNDED = 1;
+
+/** MoWorld: expansão automática (ver autoExpandStep). */
+export const AUTO_EXPAND_EVERY = 10;
+export const AUTO_EXPAND_TRIGGER = 0.35;
+export const AUTO_EXPAND_KEEP = 0.15;
 
 export class PlayerExecution implements Execution {
   private ticksPerClusterCalc = TICKS_PER_CLUSTER_CALC;
@@ -58,6 +64,9 @@ export class PlayerExecution implements Execution {
 
   tick(ticks: number) {
     this.player.decayRelations();
+    if (this.player.autoExpand() && ticks % AUTO_EXPAND_EVERY === 0) {
+      this.autoExpandStep();
+    }
     for (const u of this.player.units()) {
       if (!Structures.has(u.type())) {
         continue;
@@ -892,6 +901,54 @@ export class PlayerExecution implements Execution {
       return CLUSTER_SURROUNDED;
     }
     return 0;
+  }
+
+  /**
+   * MoWorld: expansão automática, no ritmo das nações: juntando
+   * AUTO_EXPAND_TRIGGER do teto de tropas, manda tudo menos AUTO_EXPAND_KEEP
+   * para a terra livre vizinha e para a tribo vizinha mais fraca.
+   * Nunca ataca nação nem pessoa.
+   */
+  private autoExpandStep() {
+    const p = this.player;
+    if (!p.isAlive() || this.mg.inSpawnPhase()) return;
+    const max = this.mg.config().maxTroops(p);
+    if (p.troops() < max * AUTO_EXPAND_TRIGGER) return;
+    const send = Math.floor(p.troops() - max * AUTO_EXPAND_KEEP);
+    if (send < 1) return;
+    const map = this.mg.map();
+    let freeLand = false;
+    let tribe: Player | null = null;
+    for (const t of p.borderTiles()) {
+      for (const n of this.mg.neighbors(t)) {
+        if (!map.isLand(n) || this.mg.isImpassable(n)) continue;
+        const o = this.mg.owner(n);
+        if (!o.isPlayer()) {
+          if (!map.hasFallout(n)) freeLand = true;
+        } else if (
+          o.type() === PlayerType.Bot &&
+          !p.isFriendly(o) &&
+          (tribe === null || o.troops() < tribe.troops())
+        ) {
+          tribe = o;
+        }
+      }
+    }
+    // Terra livre e tribo ao mesmo tempo, como as nações: as tribos ocupam
+    // boa parte do mapa no começo.
+    if (freeLand && tribe !== null) {
+      const half = Math.floor(send / 2);
+      this.mg.addExecution(
+        new AttackExecution(half, p, this.mg.terraNullius().id()),
+      );
+      this.mg.addExecution(new AttackExecution(send - half, p, tribe.id()));
+    } else if (freeLand) {
+      this.mg.addExecution(
+        new AttackExecution(send, p, this.mg.terraNullius().id()),
+      );
+    } else if (tribe !== null) {
+      this.mg.addExecution(new AttackExecution(send, p, tribe.id()));
+    }
   }
 
   // MoWorld: na dupla, a aliança entre os dois humanos começa sozinha e é

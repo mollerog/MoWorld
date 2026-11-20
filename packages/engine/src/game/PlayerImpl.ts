@@ -195,6 +195,10 @@ export class PlayerImpl implements Player {
   private lastMirvTargetedTick: Tick | null = null;
   /** MoWorld: cabeças de ponte da passagem por aliado (ver Game.ts). */
   private _passageBridgeheads = new Set<TileRef>();
+  /** MoWorld: humanos (smallID) que me atacaram durante a trégua. */
+  private _truceBrokenBy = new Set<number>();
+  /** MoWorld: expansão automática ligada. */
+  private _autoExpand = false;
   private lastEmbargoAllTick: Tick = -1;
 
   public _incomingAttacks: Attack[] = [];
@@ -607,6 +611,18 @@ export class PlayerImpl implements Player {
 
   passageBridgeheads(): ReadonlySet<TileRef> {
     return this._passageBridgeheads;
+  }
+
+  truceBrokenBy(human: Player): boolean {
+    return this._truceBrokenBy.has(human.smallID());
+  }
+
+  autoExpand(): boolean {
+    return this._autoExpand;
+  }
+
+  setAutoExpand(enabled: boolean): void {
+    this._autoExpand = enabled;
   }
 
   removePassageBridgehead(tile: TileRef): void {
@@ -2000,6 +2016,15 @@ export class PlayerImpl implements Player {
     sourceTile: TileRef | null,
     border: Set<number>,
   ): Attack {
+    // MoWorld: humano que ataca uma nação na trégua libera o revide dela.
+    if (
+      this.type() === PlayerType.Human &&
+      target.isPlayer() &&
+      target.type() === PlayerType.Nation &&
+      this.mg.isHumanTruceActive()
+    ) {
+      (target as PlayerImpl)._truceBrokenBy.add(this.smallID());
+    }
     const attack = new AttackImpl(
       this._pseudo_random.nextID(),
       target,
@@ -2037,6 +2062,16 @@ export class PlayerImpl implements Player {
     treatAFKFriendly: boolean = false,
   ): boolean {
     if (this.type() !== PlayerType.Human) {
+      // MoWorld: trégua do começo — nação não ataca humano, a não ser que
+      // ele a tenha atacado.
+      if (
+        this.type() === PlayerType.Nation &&
+        player.type() === PlayerType.Human &&
+        this.mg.isHumanTruceActive() &&
+        !this.truceBrokenBy(player)
+      ) {
+        return false;
+      }
       // Only human attackers respect PVP immunity
       return !this.isFriendly(player, treatAFKFriendly);
     }
@@ -2158,6 +2193,8 @@ export class PlayerImpl implements Player {
       lastMirvTick: this.lastMirvTick,
       lastMirvTargetedTick: this.lastMirvTargetedTick,
       passageBridgeheads: Uint32Array.from(this._passageBridgeheads),
+      truceBrokenBy: Uint32Array.from(this._truceBrokenBy),
+      autoExpand: this._autoExpand,
     };
   }
 
@@ -2235,6 +2272,8 @@ export class PlayerImpl implements Player {
     this.lastMirvTick = s.lastMirvTick ?? null;
     this.lastMirvTargetedTick = s.lastMirvTargetedTick ?? null;
     this._passageBridgeheads = new Set(s.passageBridgeheads ?? []);
+    this._truceBrokenBy = new Set(s.truceBrokenBy ?? []);
+    this._autoExpand = s.autoExpand ?? false;
     this.nearbyMemo = null;
   }
 }
@@ -2308,6 +2347,8 @@ export const PlayerSnapshot = snapshotType({
     lastMirvTick: zInt().nullable().optional(),
     lastMirvTargetedTick: zInt().nullable().optional(),
     passageBridgeheads: zTiles().optional(),
+    truceBrokenBy: zTiles().optional(),
+    autoExpand: z.boolean().optional(),
   }),
 });
 export type PlayerState = z.infer<typeof PlayerSnapshot.schema>;

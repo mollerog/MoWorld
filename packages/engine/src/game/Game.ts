@@ -454,6 +454,11 @@ export interface Player extends PlayerLike {
    * num aliado (PlayerExecution).
    */
   addPassageBridgehead(tile: TileRef): void;
+  /** MoWorld: este humano atacou esta nação durante a trégua do começo. */
+  truceBrokenBy(human: Player): boolean;
+  /** MoWorld: expansão automática para terra livre e tribos (PlayerExecution). */
+  autoExpand(): boolean;
+  setAutoExpand(enabled: boolean): void;
   passageBridgeheads(): ReadonlySet<TileRef>;
   removePassageBridgehead(tile: TileRef): void;
   /** MoWorld: tick da última doação (tropas ou ouro) para esse jogador. */
@@ -586,6 +591,8 @@ export interface Game extends GameLike {
   // Immunity timer
   isSpawnImmunityActive(): boolean;
   isNationSpawnImmunityActive(): boolean;
+  /** MoWorld: nações ainda não podem atacar humanos (trégua do começo). */
+  isHumanTruceActive(): boolean;
   elapsedGameSeconds(): number;
 
   // Game State

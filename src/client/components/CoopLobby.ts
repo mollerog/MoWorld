@@ -351,6 +351,7 @@ export class CoopLobby extends LitElement {
         gameMode: this.mode === "world" ? GameMode.Team : GameMode.FFA,
         playerTeams: this.mode === "world" ? HumansVsNations : 2,
         coopDuo: this.mode === "duo",
+        humanTruce: true,
         difficulty: this.difficulty,
         bots: 400,
         infiniteGold: false,

@@ -11,12 +11,12 @@ import { AllianceExtensionExecution } from "./alliance/AllianceExtensionExecutio
 import { AllianceRejectExecution } from "./alliance/AllianceRejectExecution";
 import { AllianceRequestExecution } from "./alliance/AllianceRequestExecution";
 import { BreakAllianceExecution } from "./alliance/BreakAllianceExecution";
+import { AskAllyAidExecution } from "./AskAllyAidExecution";
 import { AttackExecution } from "./AttackExecution";
 import { BoatRetreatExecution } from "./BoatRetreatExecution";
 import { ConstructionExecution } from "./ConstructionExecution";
 import { DeleteUnitExecution } from "./DeleteUnitExecution";
 import { DonateGoldExecution } from "./DonateGoldExecution";
-import { AskAllyAidExecution } from "./AskAllyAidExecution";
 import { DonateTroopsExecution } from "./DonateTroopExecution";
 import { EmbargoAllExecution } from "./EmbargoAllExecution";
 import { EmbargoExecution } from "./EmbargoExecution";
@@ -28,6 +28,7 @@ import { NoOpExecution } from "./NoOpExecution";
 import { PauseExecution } from "./PauseExecution";
 import { QuickChatExecution } from "./QuickChatExecution";
 import { RetreatExecution } from "./RetreatExecution";
+import { SetAutoExpandExecution } from "./SetAutoExpandExecution";
 import { SpawnExecution } from "./SpawnExecution";
 import { TargetPlayerExecution } from "./TargetPlayerExecution";
 import { TransportShipExecution } from "./TransportShipExecution";
@@ -110,6 +111,8 @@ export class Executor {
         );
       case "donate_gold":
         return new DonateGoldExecution(player, intent.recipient, intent.gold);
+      case "auto_expand":
+        return new SetAutoExpandExecution(player, intent.enabled);
       case "ask_ally_aid":
         return new AskAllyAidExecution(player, intent.recipient, intent.kind);
       case "embargo":

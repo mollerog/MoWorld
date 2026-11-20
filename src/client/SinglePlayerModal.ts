@@ -1357,6 +1357,7 @@ export class SinglePlayerModal extends BaseModal {
             infiniteTroops: this.infiniteTroops,
             instantBuild: this.instantBuild,
             ...(this.moworldTest ? { moworldTest: true } : {}),
+            humanTruce: true,
             randomSpawn: this.randomSpawn,
             disabledUnits: this.disabledUnits.filter((unit): unit is UnitType =>
               Object.values(UnitType).includes(unit),
@@ -1435,6 +1436,7 @@ export class SinglePlayerModal extends BaseModal {
             instantBuild: false,
             randomSpawn: false,
             nations: "default",
+            humanTruce: true,
             ...challengeConfig(def),
           },
           lobbyCreatedAt: Date.now(),

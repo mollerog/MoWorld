@@ -96,6 +96,16 @@ export abstract class AiAttackBehavior {
 
   sendAttack(target: Player | TerraNullius, force = false): boolean {
     if (!force && !this.shouldAttack(target)) return false;
+    // MoWorld: humano protegido pela trégua do começo: procura outro alvo.
+    if (
+      target.isPlayer() &&
+      this.player.type() === PlayerType.Nation &&
+      target.type() === PlayerType.Human &&
+      this.game.isHumanTruceActive() &&
+      !this.player.truceBrokenBy(target)
+    ) {
+      return false;
+    }
 
     if (target.isPlayer()) {
       // MoWorld: por terra também passando por um aliado.

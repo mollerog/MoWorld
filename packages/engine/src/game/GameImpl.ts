@@ -1155,6 +1155,13 @@ export class GameImpl implements Game {
     return this.ticksSinceStart() / 10;
   }
 
+  /** MoWorld: trégua do começo (Config.humanTruceSeconds). */
+  public isHumanTruceActive(): boolean {
+    const seconds = this.config().humanTruceSeconds();
+    if (seconds <= 0) return false;
+    return this.inSpawnPhase() || this.ticksSinceStart() < seconds * 10;
+  }
+
   public isNationSpawnImmunityActive(): boolean {
     return (
       this.inSpawnPhase() ||

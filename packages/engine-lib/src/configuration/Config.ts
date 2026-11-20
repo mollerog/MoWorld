@@ -305,6 +305,29 @@ export class Config {
     return this.isMoWorldTest() ? TEST_WAIT : 5 * 60 * 10;
   }
 
+  /**
+   * MoWorld: trégua do começo da partida (solo, desafios e com amigos, com
+   * GameConfig.humanTruce): nesse tempo
+   * as nações não atacam humanos — a não ser quem foi atacado por um deles
+   * (PlayerImpl.canAttackPlayer). Fácil 5 min, Médio 3, Difícil 1.
+   */
+  humanTruceSeconds(): number {
+    const c = this._gameConfig;
+    if (!c.humanTruce || c.gameType !== GameType.Singleplayer || c.tutorial) {
+      return 0;
+    }
+    switch (c.difficulty) {
+      case Difficulty.Easy:
+        return 5 * 60;
+      case Difficulty.Medium:
+        return 3 * 60;
+      case Difficulty.Hard:
+        return 60;
+      default:
+        return 0;
+    }
+  }
+
   /** MoWorld: espera entre duas ajudas da mesma nação aliada (3 minutos). */
   allyAidCooldown(): Tick {
     return this.isMoWorldTest() ? TEST_WAIT : 3 * 60 * 10;

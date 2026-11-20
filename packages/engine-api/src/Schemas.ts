@@ -36,6 +36,7 @@ export type Intent =
   | DonateGoldIntent
   | DonateTroopsIntent
   | AskAllyAidIntent
+  | SetAutoExpandIntent
   | BuildUnitIntent
   | EmbargoIntent
   | QuickChatIntent
@@ -63,6 +64,7 @@ export type EmojiIntent = z.infer<typeof EmojiIntentSchema>;
 export type DonateGoldIntent = z.infer<typeof DonateGoldIntentSchema>;
 export type DonateTroopsIntent = z.infer<typeof DonateTroopIntentSchema>;
 export type AskAllyAidIntent = z.infer<typeof AskAllyAidIntentSchema>;
+export type SetAutoExpandIntent = z.infer<typeof SetAutoExpandIntentSchema>;
 export type EmbargoIntent = z.infer<typeof EmbargoIntentSchema>;
 export type BuildUnitIntent = z.infer<typeof BuildUnitIntentSchema>;
 export type UpgradeStructureIntent = z.infer<
@@ -320,6 +322,8 @@ export const GameConfigSchema = z.object({
   moworldTest: z.boolean().optional(),
   // MoWorld: desafio do solo (src/client/challenges/Challenges.ts).
   moworldChallenge: z.string().optional(),
+  // MoWorld: trégua do começo (Config.humanTruceSeconds).
+  humanTruce: z.boolean().optional(),
   maxPlayers: zb.uint().optional(),
   // OFM: allowlist of publicIds allowed to join (admin-only, see create_game).
   allowedPublicIds: z.array(z.string()).max(200).optional(),
@@ -505,6 +509,12 @@ export const AskAllyAidIntentSchema = z.object({
   kind: z.enum(["troops", "gold"]),
 });
 
+// MoWorld: liga/desliga a expansão automática (SetAutoExpandExecution).
+export const SetAutoExpandIntentSchema = z.object({
+  type: z.literal("auto_expand"),
+  enabled: z.boolean(),
+});
+
 export const BuildUnitIntentSchema = z.object({
   type: z.literal("build_unit"),
   unit: z.enum(UnitType),
@@ -597,6 +607,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   DonateGoldIntentSchema,
   DonateTroopIntentSchema,
   AskAllyAidIntentSchema,
+  SetAutoExpandIntentSchema,
   BuildUnitIntentSchema,
   UpgradeStructureIntentSchema,
   EmbargoIntentSchema,
