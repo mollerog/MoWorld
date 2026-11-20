@@ -98,21 +98,4 @@ describe("HelpModal mobile rendering", () => {
       (modal.querySelector("#help-hotkeys-content") as HTMLElement).hidden,
     ).toBe(false);
   });
-
-  it("shows the translated troubleshooting label with mobile wrapping", async () => {
-    setPrimaryPointerIsTouch(true);
-
-    const modal = await mountHelpModal();
-    const button = modal.querySelector<HTMLButtonElement>(
-      "#troubleshooting-button",
-    );
-    const label = button?.querySelector("span");
-
-    expect(label?.textContent?.trim()).toBeTruthy();
-    expect(button?.classList.contains("w-full")).toBe(true);
-    expect(button?.classList.contains("text-sm")).toBe(true);
-    expect(button?.classList.contains("sm:text-xs")).toBe(true);
-    expect(button?.classList.contains("whitespace-normal")).toBe(true);
-    expect(button?.classList.contains("break-words")).toBe(true);
-  });
 });

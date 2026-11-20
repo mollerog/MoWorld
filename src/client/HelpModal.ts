@@ -1,14 +1,13 @@
-import { cards } from "./components/GestureGuide";
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { html } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import {
-  DESKTOP_TUTORIAL_VIDEO_URL,
   textDirection,
   translateText,
   TUTORIAL_VIDEO_URL,
 } from "../client/Utils";
 import { BaseModal } from "./components/BaseModal";
+import { cards } from "./components/GestureGuide";
 import "./components/Difficulties";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { KeyboardLayoutController } from "./KeyboardLayout";
@@ -181,52 +180,6 @@ export class HelpModal extends BaseModal {
             )}
           </section>
 
-          <!-- Troubleshooting Section -->
-          <div class="flex items-center gap-3 mb-3">
-            <div class="text-blue-400">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M2 20 L12 0 L22 20 L2 20"></path>
-                <line x1="12" y1="8" x2="12" y2="14"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
-            </div>
-            <h3
-              class="text-xl font-bold uppercase tracking-widest text-white/90"
-            >
-              ${translateText("main.troubleshooting")}
-            </h3>
-            <div
-              class="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"
-            ></div>
-          </div>
-          <section>
-            <div class="w-full flex flex-col items-center">
-              <p class="mb-6 text-white/70 text-sm">
-                ${translateText("help_modal.troubleshooting_desc")}
-              </p>
-              <button
-                id="troubleshooting-button"
-                class="w-full sm:w-fit max-w-full hover:bg-white/5 px-4 sm:px-6 py-2 text-sm sm:text-xs font-bold transition-all duration-200 rounded-lg uppercase tracking-widest bg-malibu-blue/20 text-aquarius border border-malibu-blue/30 shadow-[var(--shadow-malibu-blue)] whitespace-normal break-words text-center"
-                data-page="page-troubleshooting"
-                @click="${this.openTroubleshooting}"
-              >
-                <span
-                  class="relative z-10 block max-w-full leading-snug"
-                  >${translateText("main.go_to_troubleshooting")}</span
-                >
-              </button>
-            </div>
-          </section>
           <!-- Hotkeys Section -->
           <div
             id="help-hotkeys-heading"
@@ -688,135 +641,6 @@ export class HelpModal extends BaseModal {
             </div>
           </section>
 
-          <!-- Info/Ally Panels Section -->
-          <section class="mb-8">
-            <div class="flex items-center gap-3 mb-6">
-              <div class="text-blue-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-              </div>
-              <h3
-                class="text-xl font-bold uppercase tracking-widest text-white/90"
-              >
-                ${translateText("help_modal.info_title")}
-              </h3>
-              <div
-                class="flex-1 h-px bg-gradient-to-r from-blue-500/50 to-transparent"
-              ></div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- Enemy Info -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.info_enemy_panel")}</span
-                  >
-                </div>
-                <div class="text-white/70 text-sm">
-                  <p class="mb-4 leading-relaxed">
-                    ${translateText("help_modal.info_enemy_desc")}
-                  </p>
-                  <ul class="space-y-3">
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/ChatIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.info_chat")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/TargetIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.info_target")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/AllianceIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.info_alliance")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/EmojiIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.info_emoji")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/StopIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                        loading="lazy"
-                      />
-                      <span>${translateText("help_modal.info_trade")}</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Ally Info -->
-              <div
-                class="bg-black/20 rounded-xl border border-white/10 p-6 flex flex-col gap-6 hover:bg-white/5 transition-colors"
-              >
-                <div class="flex flex-col items-center gap-3">
-                  <span
-                    class="text-xs font-bold uppercase tracking-wider text-blue-300"
-                    >${translateText("help_modal.info_ally_panel")}</span
-                  >
-                </div>
-                <div class="text-white/70 text-sm">
-                  <p class="mb-4 leading-relaxed">
-                    ${translateText("help_modal.info_ally_desc")}
-                  </p>
-                  <ul class="space-y-3">
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/TraitorIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.ally_betray")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/DonateTroopIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span>${translateText("help_modal.ally_donate")}</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                      <img
-                        src=${assetUrl("images/DonateGoldIconWhite.svg")}
-                        class="w-8 h-8 scale-75 origin-left"
-                      />
-                      <span
-                        >${translateText("help_modal.ally_donate_gold")}</span
-                      >
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </section>
 
           <!-- Build Menu Section -->
           <section class="mb-8">

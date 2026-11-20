@@ -42,7 +42,6 @@ import { KEYBOARD_DETECTED_EVENT, Platform } from "./Platform";
 import type { AudioControls } from "./sound/CuePlayer";
 import { audioControls, playCue } from "./sound/CuePlayer";
 import type { CueCategory } from "./sound/Sounds";
-import { canHandOffToSteam } from "./SteamHandoff";
 import type { UIState } from "./UIState";
 import {
   AudioCategory,
@@ -2058,56 +2057,6 @@ export class UserSettingModal extends BaseModal {
         }}
       ></setting-select>
 
-      <!-- 🙈 Anonymous Names -->
-      <setting-toggle
-        label="${translateText("user_setting.anonymous_names_label")}"
-        description="${translateText("user_setting.anonymous_names_desc")}"
-        id="anonymous-names-toggle"
-        .checked=${this.userSettings.anonymousNames()}
-        @change=${this.toggleAnonymousNames}
-      ></setting-toggle>
-
-      <!-- 👁️ Hidden Lobby IDs -->
-      <setting-toggle
-        label="${translateText("user_setting.lobby_id_visibility_label")}"
-        description="${translateText("user_setting.lobby_id_visibility_desc")}"
-        id="lobby-id-visibility-toggle"
-        .checked=${!this.userSettings.lobbyIdVisibility()}
-        @change=${this.toggleLobbyIdVisibility}
-      ></setting-toggle>
-
-      <!-- 🔔 Lobby start alerts -->
-      <setting-toggle
-        label="${translateText("user_setting.lobby_start_alerts_label")}"
-        description="${translateText("user_setting.lobby_start_alerts_desc")}"
-        id="lobby-start-alerts-toggle"
-        .checked=${this.userSettings.lobbyStartAlerts()}
-        @change=${this.toggleLobbyStartAlerts}
-      ></setting-toggle>
-
-      <!-- 🎬 New replay viewer (on by default) -->
-      <setting-toggle
-        label="${translateText("user_setting.replay_viewer_label")}"
-        description="${translateText("user_setting.replay_viewer_desc")}"
-        id="replay-viewer-toggle"
-        .checked=${this.userSettings.replayViewer()}
-        @change=${this.toggleReplayViewer}
-      ></setting-toggle>
-
-      ${
-        canHandOffToSteam()
-          ? html`<setting-toggle
-              label="${translateText("user_setting.steam_lobby_links_label")}"
-              description="${translateText(
-                "user_setting.steam_lobby_links_desc",
-              )}"
-              id="steam-lobby-links-toggle"
-              .checked=${this.userSettings.steamLobbyLinks() === "steam"}
-              @change=${this.toggleSteamLobbyLinks}
-            ></setting-toggle>`
-          : null
-      }
-
       <!-- 🔍 Go to player -->
       <setting-toggle
         label="${translateText("user_setting.go_to_player_label")}"
@@ -2116,18 +2065,6 @@ export class UserSettingModal extends BaseModal {
         .checked=${this.userSettings.goToPlayer()}
         @change=${this.toggleGoToPlayer}
       ></setting-toggle>
-
-      ${
-        isHalloweenSeason()
-          ? html`<setting-toggle
-              label="${translateText("user_setting.halloween_theme_label")}"
-              description="${translateText("user_setting.halloween_theme_desc")}"
-              id="halloween-theme-toggle"
-              .checked=${this.userSettings.halloweenTheme()}
-              @change=${this.toggleHalloweenTheme}
-            ></setting-toggle>`
-          : null
-      }
 
       <!-- Help messages (moved here from the in-game menu) -->
       <setting-toggle
@@ -2190,52 +2127,6 @@ export class UserSettingModal extends BaseModal {
             : translateText("user_setting.off")}
         @change=${this.sliderNukeAllianceSafetyDuration}
       ></setting-slider>
-
-      ${
-        this.showEasterEggSettings
-          ? html`
-              <setting-slider
-                label="${translateText(
-                  "user_setting.easter_writing_speed_label",
-                )}"
-                description="${translateText(
-                  "user_setting.easter_writing_speed_desc",
-                )}"
-                min="0"
-                max="100"
-                value="40"
-                easter="true"
-                @change=${(e: CustomEvent) => {
-                  const value = e.detail?.value;
-                  if (value !== undefined) {
-                    console.log("Changed:", value);
-                  } else {
-                    console.warn("Slider event missing detail.value", e);
-                  }
-                }}
-              ></setting-slider>
-
-              <setting-number
-                label="${translateText("user_setting.easter_bug_count_label")}"
-                description="${translateText(
-                  "user_setting.easter_bug_count_desc",
-                )}"
-                value="100"
-                min="0"
-                max="1000"
-                easter="true"
-                @change=${(e: CustomEvent) => {
-                  const value = e.detail?.value;
-                  if (value !== undefined) {
-                    console.log("Changed:", value);
-                  } else {
-                    console.warn("Slider event missing detail.value", e);
-                  }
-                }}
-              ></setting-number>
-            `
-          : null
-      }
     `;
   }
 
