@@ -115,7 +115,17 @@ export abstract class AiAttackBehavior {
     for (const a of target.incomingAttacks()) {
       const attacker = a.attacker();
       if (attacker === this.player) return false;
-      if (attacker.type() === PlayerType.Nation && !provokedBy(attacker)) {
+      if (attacker.type() === PlayerType.Nation) {
+        others.add(attacker);
+      }
+    }
+    // Barcos de nações a caminho do humano também contam.
+    for (const boat of this.game.units(UnitType.TransportShip)) {
+      const dst = boat.targetTile();
+      if (dst === undefined || this.game.owner(dst) !== target) continue;
+      const attacker = boat.owner();
+      if (attacker === this.player) return false;
+      if (attacker.type() === PlayerType.Nation) {
         others.add(attacker);
       }
     }

@@ -249,3 +249,4 @@ test("Médio: o limite vale também para quem mira o líder (ataque direto por t
   );
   expect(b.strike(me)).toBe(false);
 });
+

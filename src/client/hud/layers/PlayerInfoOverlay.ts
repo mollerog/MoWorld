@@ -153,9 +153,10 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
     this.eventBus.on(MouseMoveEvent, (e: MouseMoveEvent) =>
       this.onMouseEvent(e),
     );
-    this.eventBus.on(ContextMenuEvent, (e: ContextMenuEvent) =>
-      this.maybeShow(e.x, e.y),
-    );
+    // MoWorld: no toque longo do celular só aparece o menu redondo.
+    this.eventBus.on(ContextMenuEvent, (e: ContextMenuEvent) => {
+      if (!Platform.isTouch) this.maybeShow(e.x, e.y);
+    });
     // MoWorld: no toque rápido quem mostra o alvo é o pop-up (TargetPopup).
     this.eventBus.on(CloseRadialMenuEvent, () => this.hide());
     this.eventBus.on(SpawnBarVisibleEvent, (e) => {
