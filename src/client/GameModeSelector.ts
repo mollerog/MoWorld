@@ -689,7 +689,7 @@ export class GameModeSelector extends LitElement {
             ? "1 jogo salvo"
             : `${saves} jogos salvos`;
     const card =
-      "group flex flex-row items-center gap-2 sm:gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm px-2.5 py-2.5 sm:p-4 text-left transition-all hover:bg-slate-800/90 hover:border-white/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
+      "group flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-sm p-3 sm:p-4 text-left transition-all hover:bg-slate-800/90 hover:border-white/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none";
     const iconBox =
       "flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl";
     return html`

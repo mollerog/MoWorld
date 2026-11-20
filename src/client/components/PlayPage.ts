@@ -135,11 +135,7 @@ export class PlayPage extends LitElement {
 
         <game-mode-selector></game-mode-selector>
 
-        <!-- Desktop gets the compact footer button instead. -->
-        <steam-wishlist
-          campaign="home_mobile"
-          class="block px-2 pb-4 lg:hidden"
-        ></steam-wishlist>
+        <!-- MoWorld: sem o bloco da Steam (ocupava espaço e forçava rolagem). -->
       </div>
     `;
   }
