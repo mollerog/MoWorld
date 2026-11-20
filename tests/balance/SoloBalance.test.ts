@@ -17,6 +17,7 @@
 import {
   Cell,
   Difficulty,
+  GameType,
   Nation,
   PlayerInfo,
   PlayerType,
@@ -94,6 +95,8 @@ export interface ProxyResult {
   land: number;
   /** Quantos jogadores diferentes o atacaram, até cada minuto. */
   attackers: number[];
+  /** Maior número de atacantes ao mesmo tempo, por minuto. */
+  peakAttackers: number[];
   /** Soma das tropas dos ataques recebidos (ao começar), até cada minuto. */
   incomingTroops: number[];
 }
@@ -115,7 +118,14 @@ async function runGame(seed: string): Promise<BalanceResult> {
   const gameID = `balance-${seed}`;
   const game = await setup(
     "world",
-    { difficulty: Difficulty[DIFFICULTY] },
+    {
+      difficulty: Difficulty[DIFFICULTY],
+      // MOWORLD_BALANCE_TRUCE=1: como a partida solo de verdade (trégua e
+      // limite de nações em cima do humano).
+      ...(process.env.MOWORLD_BALANCE_TRUCE === "1"
+        ? { gameType: GameType.Singleplayer, humanTruce: true }
+        : {}),
+    },
     [],
     undefined,
     EngineConfig,
@@ -159,6 +169,7 @@ async function runGame(seed: string): Promise<BalanceResult> {
         tiles: [],
         land: game.numLandTiles(),
         attackers: [],
+        peakAttackers: [],
         incomingTroops: [],
       }
     : undefined;
@@ -166,9 +177,14 @@ async function runGame(seed: string): Promise<BalanceResult> {
   const attackers = new Set<string>();
   let incomingTroops = 0;
   for (let minute = 1; minute <= MINUTES; minute++) {
+    let peak = 0;
     for (let t = 0; t < TICKS_PER_MINUTE; t++) {
       game.executeNextTick();
       if (proxyPlayer?.isAlive()) {
+        peak = Math.max(
+          peak,
+          new Set(proxyPlayer.incomingAttacks().map((a) => a.attacker())).size,
+        );
         for (const a of proxyPlayer.incomingAttacks()) {
           if (seenAttacks.has(a)) continue;
           seenAttacks.add(a);
@@ -180,6 +196,7 @@ async function runGame(seed: string): Promise<BalanceResult> {
     if (proxy && proxyPlayer) {
       proxy.tiles.push(proxyPlayer.isAlive() ? proxyPlayer.numTilesOwned() : 0);
       proxy.attackers.push(attackers.size);
+      proxy.peakAttackers.push(peak);
       proxy.incomingTroops.push(Math.round(incomingTroops));
     }
     const land = game.numLandTiles() - game.numTilesWithFallout();

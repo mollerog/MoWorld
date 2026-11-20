@@ -1246,6 +1246,7 @@ export class NationAttackBehavior extends AiAttackBehavior {
 
   // A beachhead boat is cheap enough to risk past a warship, one at a time
   protected override sendBoatAttack(target: Player): boolean {
+    if (this.tooManyOnHuman(target)) return false;
     if (!this.landsBeachheads()) return super.sendBoatAttack(target);
     const route = this.boatRoute(target);
     if (route === null) return false;

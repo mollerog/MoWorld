@@ -94,6 +94,34 @@ export abstract class AiAttackBehavior {
     return s;
   }
 
+  /**
+   * MoWorld: o humano já tem o máximo de nações (Config.maxNationsOnHuman)
+   * atacando por conta própria? Quem o humano está atacando (revide) nunca
+   * é barrado nem conta no limite; quem já ataca pode continuar.
+   */
+  protected tooManyOnHuman(target: Player): boolean {
+    if (
+      this.player.type() !== PlayerType.Nation ||
+      target.type() !== PlayerType.Human
+    ) {
+      return false;
+    }
+    const limit = this.game.config().maxNationsOnHuman();
+    if (!Number.isFinite(limit)) return false;
+    const provokedBy = (p: Player) =>
+      target.outgoingAttacks().some((a) => a.target() === p);
+    if (provokedBy(this.player)) return false;
+    const others = new Set<Player>();
+    for (const a of target.incomingAttacks()) {
+      const attacker = a.attacker();
+      if (attacker === this.player) return false;
+      if (attacker.type() === PlayerType.Nation && !provokedBy(attacker)) {
+        others.add(attacker);
+      }
+    }
+    return others.size >= limit;
+  }
+
   sendAttack(target: Player | TerraNullius, force = false): boolean {
     if (!force && !this.shouldAttack(target)) return false;
     // MoWorld: humano protegido pela trégua do começo: procura outro alvo.
@@ -106,6 +134,8 @@ export abstract class AiAttackBehavior {
     ) {
       return false;
     }
+    // MoWorld: sem fila de nações em cima do mesmo humano.
+    if (target.isPlayer() && this.tooManyOnHuman(target)) return false;
 
     if (target.isPlayer()) {
       // MoWorld: por terra também passando por um aliado.
@@ -235,6 +265,7 @@ export abstract class AiAttackBehavior {
     sendTroops = (reserveTroops: number) => this.homeTroops() - reserveTroops,
     opponent?: Player,
   ): boolean {
+    if (target.isPlayer() && this.tooManyOnHuman(target)) return false;
     const troops = this.calculateAttackTroops(target, sendTroops, opponent);
     if (troops === null) {
       return false;
@@ -252,6 +283,7 @@ export abstract class AiAttackBehavior {
   }
 
   protected sendBoatAttack(target: Player): boolean {
+    if (this.tooManyOnHuman(target)) return false;
     const route = this.boatRoute(target);
     if (route === null || route.blocker !== null) return false;
 

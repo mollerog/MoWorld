@@ -4,7 +4,9 @@ import {
   PlayerInfo,
   PlayerType,
 } from "@openfront/engine-api/game/GameTypes";
+import { PseudoRandom } from "@openfront/engine-lib/PseudoRandom";
 import { AttackExecution } from "@openfront/engine/execution/AttackExecution";
+import { NationAttackBehavior } from "@openfront/engine/execution/nation/NationAttackBehavior";
 import { PlayerExecution } from "@openfront/engine/execution/PlayerExecution";
 import { SetAutoExpandExecution } from "@openfront/engine/execution/SetAutoExpandExecution";
 import { Game, Player } from "@openfront/engine/game/Game";
@@ -130,4 +132,120 @@ describe("MoWorld expansão automática", () => {
     expect(tribe.numTilesOwned()).toBeLessThan(tribeTiles);
     expect(nation.numTilesOwned()).toBe(nationTiles);
   });
+});
+
+describe("MoWorld: nações em fila em cima do humano", () => {
+  async function arena(difficulty: Difficulty) {
+    const g = await setup(
+      "big_plains",
+      { difficulty, gameType: GameType.Singleplayer, humanTruce: true },
+      [
+        new PlayerInfo("me", PlayerType.Human, null, "me_id"),
+        new PlayerInfo("n1", PlayerType.Nation, null, "n1_id"),
+        new PlayerInfo("n2", PlayerType.Nation, null, "n2_id"),
+        new PlayerInfo("n3", PlayerType.Nation, null, "n3_id"),
+      ],
+    );
+    const me = g.player("me_id");
+    const [n1, n2, n3] = ["n1_id", "n2_id", "n3_id"].map((id) => g.player(id));
+    // me no meio, cada nação encostando num lado.
+    for (let x = 20; x < 40; x++)
+      for (let y = 20; y < 40; y++) me.conquer(g.ref(x, y));
+    for (let x = 0; x < 20; x++)
+      for (let y = 20; y < 40; y++) n1.conquer(g.ref(x, y));
+    for (let x = 40; x < 60; x++)
+      for (let y = 20; y < 40; y++) n2.conquer(g.ref(x, y));
+    for (let x = 20; x < 40; x++)
+      for (let y = 40; y < 60; y++) n3.conquer(g.ref(x, y));
+    for (const p of [me, n1, n2, n3]) p.addTroops(100_000);
+    while (g.inSpawnPhase()) g.executeNextTick();
+    // Passa a trégua.
+    executeTicks(g, g.config().humanTruceSeconds() * 10 + 5);
+    const behavior = (n: Player) =>
+      new NationAttackBehavior(
+        new PseudoRandom(1),
+        g,
+        n,
+        0.5,
+        0.3,
+        0.2,
+        { maybeBetray: () => false } as never,
+        { maybeSendAttackEmoji: () => {}, sendEmoji: () => {} } as never,
+        {} as never,
+      );
+    return { g, me, n1, n2, n3, behavior };
+  }
+
+  test("Médio: com uma nação já em cima, a segunda procura outro alvo", async () => {
+    const { g, me, n1, n2, behavior } = await arena(Difficulty.Medium);
+    expect(g.config().maxNationsOnHuman()).toBe(1);
+    g.addExecution(new AttackExecution(20_000, n1, me.id()));
+    executeTicks(g, 2);
+    expect(behavior(n2).sendAttack(me)).toBe(false);
+    // Quem já ataca pode continuar.
+    expect(behavior(n1).sendAttack(me)).toBe(true);
+  });
+
+  test("a nação que o humano ataca sempre pode revidar e não conta", async () => {
+    const { g, me, n1, n2, n3, behavior } = await arena(Difficulty.Medium);
+    g.addExecution(new AttackExecution(20_000, me, n2.id()));
+    g.addExecution(new AttackExecution(20_000, n1, me.id()));
+    executeTicks(g, 2);
+    expect(behavior(n2).sendAttack(me)).toBe(true);
+    g.addExecution(new AttackExecution(20_000, n2, me.id()));
+    executeTicks(g, 2);
+    // n1 (oportunista) já ocupa a vaga; n2 revida sem contar: n3 fica fora.
+    expect(behavior(n3).sendAttack(me)).toBe(false);
+  });
+
+  test("Difícil: duas; Impossível: sem limite", async () => {
+    const hard = await arena(Difficulty.Hard);
+    hard.g.addExecution(new AttackExecution(20_000, hard.n1, hard.me.id()));
+    executeTicks(hard.g, 2);
+    expect(hard.behavior(hard.n2).sendAttack(hard.me)).toBe(true);
+    const imp = await arena(Difficulty.Impossible);
+    expect(imp.g.config().maxNationsOnHuman()).toBe(Infinity);
+  });
+});
+
+test("Médio: o limite vale também para quem mira o líder (ataque direto por terra)", async () => {
+  const g = await setup(
+    "big_plains",
+    {
+      difficulty: Difficulty.Medium,
+      gameType: GameType.Singleplayer,
+      humanTruce: true,
+    },
+    [
+      new PlayerInfo("me", PlayerType.Human, null, "me_id"),
+      new PlayerInfo("n1", PlayerType.Nation, null, "n1_id"),
+      new PlayerInfo("n2", PlayerType.Nation, null, "n2_id"),
+    ],
+  );
+  const me = g.player("me_id");
+  const n1 = g.player("n1_id");
+  const n2 = g.player("n2_id");
+  for (let x = 20; x < 40; x++)
+    for (let y = 20; y < 40; y++) me.conquer(g.ref(x, y));
+  for (let x = 0; x < 20; x++)
+    for (let y = 20; y < 40; y++) n1.conquer(g.ref(x, y));
+  for (let x = 40; x < 60; x++)
+    for (let y = 20; y < 40; y++) n2.conquer(g.ref(x, y));
+  for (const p of [me, n1, n2]) p.addTroops(100_000);
+  while (g.inSpawnPhase()) g.executeNextTick();
+  executeTicks(g, g.config().humanTruceSeconds() * 10 + 5);
+  g.addExecution(new AttackExecution(20_000, n1, me.id()));
+  executeTicks(g, 2);
+  const b = new NationAttackBehavior(
+    new PseudoRandom(1),
+    g,
+    n2,
+    0.5,
+    0.3,
+    0.2,
+    { maybeBetray: () => false } as never,
+    { maybeSendAttackEmoji: () => {}, sendEmoji: () => {} } as never,
+    {} as never,
+  );
+  expect(b.strike(me)).toBe(false);
 });

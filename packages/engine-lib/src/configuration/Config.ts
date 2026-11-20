@@ -306,6 +306,28 @@ export class Config {
   }
 
   /**
+   * MoWorld: quantas nações podem atacar o mesmo humano ao mesmo tempo por
+   * conta própria (com GameConfig.humanTruce). A nação que o humano está
+   * atacando sempre pode revidar e não conta. Fácil e Médio 1, Difícil 2,
+   * Impossível sem limite.
+   */
+  maxNationsOnHuman(): number {
+    const c = this._gameConfig;
+    if (!c.humanTruce || c.gameType !== GameType.Singleplayer || c.tutorial) {
+      return Infinity;
+    }
+    switch (c.difficulty) {
+      case Difficulty.Easy:
+      case Difficulty.Medium:
+        return 1;
+      case Difficulty.Hard:
+        return 2;
+      default:
+        return Infinity;
+    }
+  }
+
+  /**
    * MoWorld: trégua do começo da partida (solo, desafios e com amigos, com
    * GameConfig.humanTruce): nesse tempo
    * as nações não atacam humanos — a não ser quem foi atacado por um deles
