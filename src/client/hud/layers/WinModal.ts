@@ -18,6 +18,13 @@ import {
   TUTORIAL_VIDEO_URL,
 } from "../../../client/Utils";
 import { fetchUserMeUncached, getUserMe, invalidateUserMe } from "../../Api";
+import {
+  ChallengeDef,
+  challengeByID,
+  ChallengeResult,
+  formatMinutes,
+  recordWin,
+} from "../../challenges/Challenges";
 import { cosmeticSelectionLabel } from "../../components/CosmeticPresentation";
 import {
   ffaRatingGameOf,
@@ -203,8 +210,60 @@ export class WinModal extends LitElement implements Controller {
     return this;
   }
 
+  // MoWorld: resultado do desafio vencido (ver challenges/Challenges.ts).
+  @state()
+  private challenge: { def: ChallengeDef; result: ChallengeResult } | null =
+    null;
+
   constructor() {
     super();
+  }
+
+  private recordChallenge() {
+    if (this.challenge) return;
+    const def = challengeByID(this.game.config().gameConfig().moworldChallenge);
+    if (!def) return;
+    this.challenge = {
+      def,
+      result: recordWin(def, this.game.elapsedGameSeconds()),
+    };
+  }
+
+  private renderChallenge() {
+    const c = this.challenge;
+    if (!c) return nothing;
+    const { stars, seconds, newBest, previous } = c.result;
+    return html`<div
+      class="mb-3 rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-3 text-center"
+      data-challenge-result
+    >
+      <div class="text-sm font-bold text-white/80">
+        🏆 ${c.def.emoji} ${c.def.title}
+      </div>
+      <div class="mt-1 text-3xl leading-none">
+        ${[1, 2, 3].map((i) =>
+          i <= stars
+            ? html`<span class="text-amber-300">★</span>`
+            : html`<span class="text-white/20">★</span>`,
+        )}
+      </div>
+      <div class="mt-1 text-xs text-white/70">
+        Venceu em ${formatMinutes(seconds)} de jogo
+        ${
+          stars < 3
+            ? html` · ${stars === 1 ? "★★" : "★★★"} abaixo de
+              ${stars === 1 ? c.def.twoStarsMin : c.def.threeStarsMin} min`
+            : nothing
+        }
+      </div>
+      ${
+        newBest
+          ? html`<div class="mt-1 text-xs font-bold text-amber-300">
+              ${previous === null ? "Primeira vitória!" : "Novo recorde!"}
+            </div>`
+          : nothing
+      }
+    </div>`;
   }
 
   render() {
@@ -220,6 +279,7 @@ export class WinModal extends LitElement implements Controller {
           ${this._title || ""}
         </h2>
         <div class="min-h-0 flex-1 overflow-y-auto pr-0.5">
+          ${this.renderChallenge()}
           <game-xp-panel
             .view=${this.xpView}
             .onScreen=${this.isVisible}
@@ -1223,6 +1283,7 @@ export class WinModal extends LitElement implements Controller {
           );
           this.isWin = true;
           void gamePortal.happytime();
+          this.recordChallenge();
         } else {
           this._title = translateText("win_modal.other_won", {
             player: winner.displayName(),

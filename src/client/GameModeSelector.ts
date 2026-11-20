@@ -6,6 +6,8 @@ import { customElement, state } from "lit/decorators.js";
 import { ClientEnv } from "src/client/ClientEnv";
 import { currentUser } from "./Account";
 import { getDesktopSessionState } from "./Auth";
+import { CHALLENGES, totalStars } from "./challenges/Challenges";
+import { openChallenges } from "./components/ChallengesModal";
 import { openCoopLobby } from "./components/CoopLobby";
 import "./components/IOSAddToHomeScreenBanner";
 import {
@@ -744,7 +746,7 @@ export class GameModeSelector extends LitElement {
             >
           </button>
         </div>
-        <div class="grid grid-cols-3 gap-2 sm:gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <button
             type="button"
             data-moworld-continue
@@ -807,6 +809,29 @@ export class GameModeSelector extends LitElement {
               >
               <span class="block text-xs text-white/55 leading-tight"
                 >Últimas partidas</span
+              >
+            </span>
+          </button>
+          <!-- MoWorld: desafios do solo. -->
+          <button
+            type="button"
+            data-moworld-challenges
+            ?disabled=${disabled}
+            @click=${() => openChallenges()}
+            class=${card}
+          >
+            <span
+              class="${iconBox} bg-fuchsia-500/15 text-fuchsia-300 text-xl"
+              aria-hidden="true"
+              >🏆</span
+            >
+            <span class="min-w-0">
+              <span
+                class="block text-sm sm:text-base font-black tracking-wider text-white"
+                >DESAFIOS</span
+              >
+              <span class="block text-xs text-white/55 leading-tight"
+                >★ ${totalStars()} de ${CHALLENGES.length * 3}</span
               >
             </span>
           </button>

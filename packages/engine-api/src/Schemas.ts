@@ -318,6 +318,8 @@ export const GameConfigSchema = z.object({
   coopDuo: z.boolean().optional(),
   // MoWorld: modo de teste do solo (Config.isMoWorldTest).
   moworldTest: z.boolean().optional(),
+  // MoWorld: desafio do solo (src/client/challenges/Challenges.ts).
+  moworldChallenge: z.string().optional(),
   maxPlayers: zb.uint().optional(),
   // OFM: allowlist of publicIds allowed to join (admin-only, see create_game).
   allowedPublicIds: z.array(z.string()).max(200).optional(),

@@ -18,6 +18,7 @@ import { html, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { showToast, translateText } from "../client/Utils";
 import { responseHasLinkedIdentity } from "./AccountIdentity";
+import { ChallengeDef, challengeConfig } from "./challenges/Challenges";
 import "./components/baseComponents/Button";
 import "./components/baseComponents/Modal";
 import { BaseModal } from "./components/BaseModal";
@@ -1394,6 +1395,49 @@ export class SinglePlayerModal extends BaseModal {
               : {}),
           },
           lobbyCreatedAt: Date.now(), // ms; server should be authoritative in MP
+        },
+        source: "singleplayer",
+      };
+    });
+  }
+
+  /**
+   * MoWorld: começa a partida de um desafio, com as opções do solo no padrão
+   * (sem trapaças) e o mapa, a dificuldade e as regras do desafio.
+   */
+  public async startChallenge(def: ChallengeDef) {
+    if (this.starting) return;
+    await this.launch(async ({ resolvedName, cosmetics }, usernameInput) => {
+      const clientID = generateID();
+      const gameID = generateID();
+      return {
+        gameID,
+        gameStartInfo: {
+          gameID,
+          players: [
+            {
+              clientID,
+              username: resolvedName.name,
+              clanTag: usernameInput?.getClanTag() ?? null,
+              cosmetics,
+            },
+          ],
+          config: {
+            gameMapSize: GameMapSize.Normal,
+            gameType: GameType.Singleplayer,
+            gameMode: GameMode.FFA,
+            playerTeams: DEFAULT_OPTIONS.teamCount,
+            bots: DEFAULT_OPTIONS.bots,
+            infiniteGold: false,
+            donateGold: false,
+            donateTroops: false,
+            infiniteTroops: false,
+            instantBuild: false,
+            randomSpawn: false,
+            nations: "default",
+            ...challengeConfig(def),
+          },
+          lobbyCreatedAt: Date.now(),
         },
         source: "singleplayer",
       };
