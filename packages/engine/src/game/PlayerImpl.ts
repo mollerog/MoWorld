@@ -579,12 +579,26 @@ export class PlayerImpl implements Player {
 
   passageAllies(target: Player): Player[] {
     if (target === this) return [];
-    return this.allies().filter(
-      (ally) =>
-        ally !== target &&
-        this.sharesBorderWith(ally) &&
-        ally.sharesBorderWith(target),
-    );
+    // A corrente de aliados: começa nos que fazem fronteira comigo e segue
+    // pelos aliados meus que fazem fronteira com algum já alcançado. Vale a
+    // corrente se algum dela faz fronteira com o alvo.
+    const allies = this.allies().filter((a) => a !== target);
+    const reached: Player[] = [];
+    const pending = allies.filter((a) => this.sharesBorderWith(a));
+    const seen = new Set<Player>(pending);
+    let touchesTarget = false;
+    while (pending.length > 0) {
+      const ally = pending.shift()!;
+      reached.push(ally);
+      if (ally.sharesBorderWith(target)) touchesTarget = true;
+      for (const other of allies) {
+        if (!seen.has(other) && ally.sharesBorderWith(other)) {
+          seen.add(other);
+          pending.push(other);
+        }
+      }
+    }
+    return touchesTarget ? reached : [];
   }
 
   addPassageBridgehead(tile: TileRef): void {

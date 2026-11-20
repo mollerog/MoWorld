@@ -36,7 +36,8 @@ const MAX_SEARCH = 400_000;
  * ela "desembarca" (conquista o primeiro tile) e o ataque começa dali,
  * como o barco na praia.
  *
- * - Aliado rompeu no caminho: o exército ataca o ex-aliado de onde estiver.
+ * - Aliado rompeu no caminho (na ida ou na volta): o exército ataca o
+ *   ex-aliado de onde estiver.
  * - Alvo morreu ou virou aliado: as tropas voltam para você.
  * - O caminho foi cortado: procura outro; sem caminho, as tropas voltam.
  */
@@ -177,6 +178,21 @@ export class ArmyMarchExecution implements Execution {
     hereOwner: Player | TerraNullius,
   ) {
     const army = this.army!;
+    // Voltando por dentro de quem deixou de ser aliado: ataca ele daqui.
+    if (this.isHostile(hereOwner)) {
+      this.landAndAttack(here, hereOwner as Player);
+      return;
+    }
+    const back = this.step > 0 ? this.path[this.step - 1] : undefined;
+    const backOwner = back === undefined ? undefined : this.mg!.owner(back);
+    if (
+      back !== undefined &&
+      backOwner !== undefined &&
+      this.isHostile(backOwner)
+    ) {
+      this.landAndAttack(back, backOwner as Player);
+      return;
+    }
     if (hereOwner === this.attacker || this.step <= 0) {
       // Chegou em casa: devolve as tropas, com a perda do recuo.
       const troops = army.troops();
@@ -199,6 +215,15 @@ export class ArmyMarchExecution implements Execution {
     }
     this.step--;
     army.move(this.path[this.step]);
+  }
+
+  /** Dono de terra que não sou eu nem amigo (aliado que rompeu, etc.). */
+  private isHostile(owner: Player | TerraNullius): boolean {
+    return (
+      owner.isPlayer() &&
+      owner !== this.attacker &&
+      !this.attacker.isFriendly(owner)
+    );
   }
 
   private landAndAttack(tile: TileRef, enemy: Player) {

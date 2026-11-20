@@ -144,6 +144,64 @@ describe("MoWorld passagem por aliado", () => {
     expect(back).toBeLessThan(20_000 + 2_000);
   });
 
+  test("passa por dois aliados seguidos", () => {
+    // me | ally | ally2 | enemy: o inimigo só faz fronteira com ally2.
+    game.addPlayer(new PlayerInfo("ally2", PlayerType.Human, null, "ally2_id"));
+    const ally2 = game.player("ally2_id");
+    fill(ally2, 20, 30);
+    fill(enemy, 30, 40);
+    ally2.addTroops(50_000);
+    expect(ally.sharesBorderWith(enemy)).toBe(false);
+    me.createAllianceRequest(ally)?.accept();
+    const enemyTile = game.ref(35, 20);
+    // Só um aliado da corrente: ainda não alcança.
+    expect(me.canAttack(enemyTile)).toBe(false);
+    me.createAllianceRequest(ally2)?.accept();
+    expect(me.passageAllies(enemy)).toEqual(
+      expect.arrayContaining([ally, ally2]),
+    );
+    expect(me.canAttack(enemyTile)).toBe(true);
+    const before = enemy.numTilesOwned();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 5);
+    expect(me.units(UnitType.Army)).toHaveLength(1);
+    executeTicks(game, 80);
+    expect(enemy.numTilesOwned()).toBeLessThan(before);
+  });
+
+  test("corrente que não chega no alvo não serve", () => {
+    // me | ally | (ninguém) | enemy: o aliado não encosta no inimigo.
+    for (let x = 20; x < 22; x++)
+      for (let y = 10; y < 30; y++)
+        game.player("enemy_id").conquer(game.ref(x, y));
+    fill(enemy, 30, 40);
+    for (let x = 20; x < 30; x++)
+      for (let y = 10; y < 30; y++) enemy.relinquish(game.ref(x, y));
+    me.createAllianceRequest(ally)?.accept();
+    expect(ally.sharesBorderWith(enemy)).toBe(false);
+    expect(me.passageAllies(enemy)).toEqual([]);
+  });
+
+  test("voltando por dentro do aliado que rompeu, ataca ele", () => {
+    me.createAllianceRequest(ally)?.accept();
+    game.addExecution(new AttackExecution(20_000, me, enemy.id()));
+    executeTicks(game, 9);
+    const army = me.units(UnitType.Army)[0];
+    expect(army).toBeDefined();
+    expect(game.owner(army.tile())).toBe(ally);
+    game.addExecution(new BoatRetreatExecution(me, army.id()));
+    executeTicks(game, 3);
+    // Já está voltando, ainda dentro do aliado.
+    expect(army.transportShipState().isRetreating).toBe(true);
+    expect(game.owner(army.tile())).toBe(ally);
+    const allyBefore = ally.numTilesOwned();
+    // O aliado rompe enquanto o exército volta por dentro dele.
+    ally.breakAlliance(ally.allianceWith(me)!);
+    executeTicks(game, 30);
+    expect(me.units(UnitType.Army)).toHaveLength(0);
+    expect(ally.numTilesOwned()).toBeLessThan(allyBefore);
+  });
+
   test("a marcha não deixa um ataque parado na lista", () => {
     me.createAllianceRequest(ally)?.accept();
     game.addExecution(new AttackExecution(20_000, me, enemy.id()));

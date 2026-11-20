@@ -77,6 +77,28 @@ describe("MoWorld MIRV nerf", () => {
     expect(mirvCost(attacker)).toBe(100_000_000n);
   });
 
+  test("dois MIRVs no mesmo alvo ao mesmo tempo: só o primeiro sai", () => {
+    game.addPlayer(new PlayerInfo("third", PlayerType.Human, null, "third_id"));
+    const third = game.player("third_id");
+    for (let x = 5; x < 15; x++)
+      for (let y = 70; y < 80; y++) third.conquer(game.ref(x, y));
+    third.buildUnit(UnitType.MissileSilo, game.ref(10, 75), {});
+    game.addExecution(
+      new MissileSiloExecution(third.units(UnitType.MissileSilo)[0]),
+    );
+    third.addGold(1_000_000_000n);
+    executeTicks(game, 2);
+    // Os dois pedidos chegam no mesmo turno.
+    game.addExecution(new MirvExecution(attacker, game.ref(50, 50)));
+    game.addExecution(new MirvExecution(third, game.ref(45, 45)));
+    executeTicks(game, 3);
+    const launched =
+      attacker.unitsConstructed(UnitType.MIRV) +
+      third.unitsConstructed(UnitType.MIRV);
+    expect(launched).toBe(1);
+    expect(target.mirvShieldTicks()).toBeGreaterThan(0);
+  });
+
   test("quem recebe um MIRV fica protegido de outros por 5 minutos", () => {
     game.addPlayer(new PlayerInfo("third", PlayerType.Human, null, "third_id"));
     const third = game.player("third_id");

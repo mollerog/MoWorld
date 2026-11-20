@@ -440,8 +440,10 @@ export interface Player extends PlayerLike {
   nearby(): (Player | TerraNullius)[];
   sharesBorderWith(other: Player | TerraNullius): boolean;
   /**
-   * MoWorld: aliados que fazem fronteira comigo e com o alvo — o exército
-   * passa por dentro deles para atacar quem não faz fronteira comigo.
+   * MoWorld: a corrente de aliados (cada um fazendo fronteira com o
+   * anterior, o primeiro comigo) que chega a fazer fronteira com o alvo — o
+   * exército passa por dentro deles para atacar quem não faz fronteira
+   * comigo. Vazia se a corrente não chega no alvo.
    */
   passageAllies(target: Player): Player[];
   /** MoWorld: fronteira direta ou passagem por um aliado. */
