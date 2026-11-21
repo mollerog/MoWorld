@@ -38,6 +38,8 @@ const SEEDS = (process.env.MOWORLD_BALANCE_SEEDS ?? "1")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+// MOWORLD_BALANCE_MAP=world4000 roda no World 4000 (padrão: world).
+const MAP = process.env.MOWORLD_BALANCE_MAP ?? "world";
 const MINUTES = Number(process.env.MOWORLD_BALANCE_MINUTES ?? 30);
 const DIFFICULTY = (process.env.MOWORLD_BALANCE_DIFFICULTY ??
   "Medium") as keyof typeof Difficulty;
@@ -57,7 +59,7 @@ const PROXY = process.env.MOWORLD_BALANCE_PROXY as
 function loadWorldNations(proxyIndex: number | null): Nation[] {
   const manifest = JSON.parse(
     fs.readFileSync(
-      path.join(__dirname, "../testdata/maps/world/manifest.json"),
+      path.join(__dirname, `../testdata/maps/${MAP}/manifest.json`),
       "utf8",
     ),
   ) as { nations: { coordinates: [number, number]; name: string }[] };
@@ -117,7 +119,7 @@ async function runGame(seed: string): Promise<BalanceResult> {
   const nations = loadWorldNations(proxyIndex);
   const gameID = `balance-${seed}`;
   const game = await setup(
-    "world",
+    MAP,
     {
       difficulty: Difficulty[DIFFICULTY],
       // MOWORLD_BALANCE_TRUCE=1: como a partida solo de verdade (trégua e

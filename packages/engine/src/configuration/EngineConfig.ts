@@ -13,7 +13,7 @@ import { PlayerLike } from "@openfront/engine-api/game/ReadViews";
 import { TeamCountConfig } from "@openfront/engine-api/Schemas";
 import { NukeType } from "@openfront/engine-api/StatsSchemas";
 import { Config } from "@openfront/engine-lib/configuration/Config";
-import { exp, log, pow2 } from "@openfront/engine-lib/DetMath";
+import { exp, log, pow, pow2 } from "@openfront/engine-lib/DetMath";
 import {
   assertNever,
   sigmoid,
@@ -41,6 +41,29 @@ export interface AttackLogicInput {
   falloutRatio: number | null;
   /** Tiles on the attack front this tick (plus jitter); fixed for the tick. */
   borderSize: number;
+  /**
+   * MoWorld: land tiles of the map. Maps bigger than World fight as if each
+   * tile were 1/scale of a World tile (see mapCombatScale). Omitted = 1.
+   */
+  mapLandTiles?: number;
+}
+
+/** MoWorld: land tiles of the World map, the size the combat math is tuned for. */
+export const REFERENCE_LAND_TILES = 620_903;
+
+/**
+ * MoWorld: how many times bigger than World the map is; 1 for anything
+ * under 1.5× World. World 4000 ≈ 4. On those maps the large-territory bonus
+ * counts tiles/scale, fronts move √scale faster and the base cost per tile
+ * is divided by scale^0.4 (armies there are ~scale^0.6 bigger), so taking a
+ * share of an enemy costs the same share of your army as on World. Defender
+ * losses (troops per tile) already follow the map and need no change.
+ */
+export function mapCombatScale(mapLandTiles: number | undefined): number {
+  if (mapLandTiles === undefined) return 1;
+  const ratio = mapLandTiles / REFERENCE_LAND_TILES;
+  // World-sized maps (and the test copy of World, ~5% bigger) stay exact.
+  return ratio < 1.5 ? 1 : ratio;
 }
 
 export interface AttackLogicResult {
@@ -538,6 +561,12 @@ export class EngineConfig extends Config {
   attackLogic(input: AttackLogicInput): AttackLogicResult {
     const { attackTroops, attacker, defender } = input;
     let { mag, tileCost } = terrainAttackBase(input.terrain);
+    const scale = mapCombatScale(input.mapLandTiles);
+    const speedScale = Math.sqrt(scale);
+    // Armies grow with tiles^0.6 (troopCap), so on a map `scale`× bigger
+    // they are ~scale^0.6 bigger: a tile costs 1/scale^0.4 of World's to
+    // take the same share of an army per share of land.
+    const costScale = pow(scale, 0.4);
 
     if (defender !== null && input.defenderHasDefensePost) {
       mag *= this.defensePostDefenseBonus();
@@ -552,14 +581,17 @@ export class EngineConfig extends Config {
     if (defender === null) {
       const tickBudget = input.borderSize * 2;
       return {
-        attackerTroopLoss: mag / (attacker.type === PlayerType.Bot ? 10 : 5),
+        attackerTroopLoss:
+          mag / (attacker.type === PlayerType.Bot ? 10 : 5) / costScale,
         defenderTroopLoss: 0,
         tickFraction:
           within(
             (TERRA_NULLIUS_COST_SCALE * tileCost) / attackTroops,
             TERRA_NULLIUS_MIN_COST,
             TERRA_NULLIUS_MAX_COST,
-          ) / tickBudget,
+          ) /
+          tickBudget /
+          speedScale,
       };
     }
 
@@ -578,11 +610,11 @@ export class EngineConfig extends Config {
     // Big territories are cheaper and faster to attack from and into, so
     // late games stay dynamic. The attacker's bonus is the stronger one.
     const largeAttackerBonus = largeTerritoryBonus(
-      attacker.numTiles,
+      attacker.numTiles / scale,
       LARGE_ATTACKER_DEPTH,
     );
     const largeDefenderBonus = largeTerritoryBonus(
-      defender.numTiles,
+      defender.numTiles / scale,
       LARGE_DEFENDER_DEPTH,
     );
 
@@ -601,7 +633,8 @@ export class EngineConfig extends Config {
       mag *
       traitorLossMod *
       within(troopRatio, CHEAPEST_TROOP_RATIO, 2) *
-      (ATTACKER_LOSS_BASE * largeAttackerBonus * largeDefenderBonus +
+      ((ATTACKER_LOSS_BASE * largeAttackerBonus * largeDefenderBonus) /
+        costScale +
         ATTACKER_LOSS_PER_DENSITY * defenderTroopLoss);
 
     // Speed: a tile's cost in tick-fractions grows with how outnumbered the
@@ -612,7 +645,7 @@ export class EngineConfig extends Config {
       (within(troopRatio, 0.82, 7.5) * within(troopRatio / 20, 1, 50)) /
       SPEED_COST_DIVISOR;
     const largeAttackerSpeedBonus = largeTerritoryBonus(
-      attacker.numTiles,
+      attacker.numTiles / scale,
       LARGE_ATTACKER_SPEED_DEPTH,
     );
     return {
@@ -624,7 +657,8 @@ export class EngineConfig extends Config {
           largeAttackerSpeedBonus *
           largeDefenderBonus *
           traitorCostMod) /
-        input.borderSize,
+        input.borderSize /
+        speedScale,
     };
   }
 

@@ -38,64 +38,64 @@ exports[`attack scenarios > big_plains equal 20k tiles each, 200k vs 200k, attac
 
 exports[`attack scenarios > giant 1M vs 600k tiles, 8M troops all-in vs 1M defender 1`] = `
 {
-  "attackerLossPerSecond": 87810,
-  "attackerLossPerTile": 8.125,
+  "attackerLossPerSecond": 96270,
+  "attackerLossPerTile": 10.49,
   "attackerTiles": 1010406,
-  "attackerTroopsLost": 3749349,
+  "attackerTroopsLost": 4842562,
   "defenderEliminated": false,
-  "defenderLossPerSecond": 17320,
+  "defenderLossPerSecond": 14700,
   "defenderLossPerTile": 1.603,
   "defenderTiles": 591663,
   "defenderTroopsLost": 739638,
   "finished": true,
-  "ticks": 427,
+  "ticks": 503,
   "tilesConquered": 461482,
-  "tilesPerSecond": 10810,
+  "tilesPerSecond": 9175,
 }
 `;
 
 exports[`attack scenarios > giant 1M vs 600k tiles, 8M vs 8M troops, attack 2M 1`] = `
 {
-  "attackerLossPerSecond": 62310,
-  "attackerLossPerTile": 32.2,
+  "attackerLossPerSecond": 47960,
+  "attackerLossPerTile": 46.24,
   "attackerTiles": 1010406,
   "attackerTroopsLost": 2000000,
   "defenderEliminated": false,
-  "defenderLossPerSecond": 25160,
+  "defenderLossPerSecond": 13480,
   "defenderLossPerTile": 13,
   "defenderTiles": 591663,
-  "defenderTroopsLost": 807560,
+  "defenderTroopsLost": 562250,
   "finished": true,
-  "ticks": 321,
-  "tilesConquered": 62120,
-  "tilesPerSecond": 1935,
+  "ticks": 417,
+  "tilesConquered": 43250,
+  "tilesPerSecond": 1037,
 }
 `;
 
 exports[`attack scenarios > giant 1M-tile attacker, 8M troops, attack 2M vs 400-tile turtle with 4M (10k/tile) 1`] = `
 {
-  "attackerLossPerSecond": 1555000,
-  "attackerLossPerTile": 4810,
+  "attackerLossPerSecond": 1437000,
+  "attackerLossPerTile": 4814,
   "attackerTiles": 1010018,
-  "attackerTroopsLost": 1866286,
+  "attackerTroopsLost": 1867960,
   "defenderEliminated": true,
-  "defenderLossPerSecond": 2483000,
+  "defenderLossPerSecond": 2292000,
   "defenderLossPerTile": 7679,
   "defenderTiles": 388,
   "defenderTroopsLost": 2979310,
   "finished": true,
-  "ticks": 12,
+  "ticks": 13,
   "tilesConquered": 388,
-  "tilesPerSecond": 323.3,
+  "tilesPerSecond": 298.5,
 }
 `;
 
 exports[`attack scenarios > giant 1M-tile attacker, 8M troops, attack 2M vs 400-tile turtle with 400k (1k/tile) 1`] = `
 {
-  "attackerLossPerSecond": 144800,
-  "attackerLossPerTile": 149.3,
+  "attackerLossPerSecond": 146000,
+  "attackerLossPerTile": 150.5,
   "attackerTiles": 1010018,
-  "attackerTroopsLost": 57911,
+  "attackerTroopsLost": 58413,
   "defenderEliminated": true,
   "defenderLossPerSecond": 744800,
   "defenderLossPerTile": 767.9,
@@ -110,26 +110,26 @@ exports[`attack scenarios > giant 1M-tile attacker, 8M troops, attack 2M vs 400-
 
 exports[`attack scenarios > giant 400-tile attacker, 1M troops all-in vs 1M-tile defender with 1M 1`] = `
 {
-  "attackerLossPerSecond": 20490,
-  "attackerLossPerTile": 42.93,
+  "attackerLossPerSecond": 31550,
+  "attackerLossPerTile": 31.37,
   "attackerTiles": 388,
   "attackerTroopsLost": 1000000,
   "defenderEliminated": false,
-  "defenderLossPerSecond": 272.1,
-  "defenderLossPerTile": 0.57,
+  "defenderLossPerSecond": 689.5,
+  "defenderLossPerTile": 0.6857,
   "defenderTiles": 1010018,
-  "defenderTroopsLost": 13278,
+  "defenderTroopsLost": 21857,
   "finished": true,
-  "ticks": 488,
-  "tilesConquered": 23296,
-  "tilesPerSecond": 477.4,
+  "ticks": 317,
+  "tilesConquered": 31875,
+  "tilesPerSecond": 1006,
 }
 `;
 
 exports[`attack scenarios > giant 400-tile attacker, 100k troops, attack 50k vs 1M-tile sparse defender with 1M 1`] = `
 {
-  "attackerLossPerSecond": 1497,
-  "attackerLossPerTile": 53.48,
+  "attackerLossPerSecond": 1623,
+  "attackerLossPerTile": 38.64,
   "attackerTiles": 388,
   "attackerTroopsLost": 50000,
   "defenderEliminated": false,
@@ -138,27 +138,27 @@ exports[`attack scenarios > giant 400-tile attacker, 100k troops, attack 50k vs 
   "defenderTiles": 1010018,
   "defenderTroopsLost": 0,
   "finished": true,
-  "ticks": 334,
-  "tilesConquered": 935,
-  "tilesPerSecond": 27.99,
+  "ticks": 308,
+  "tilesConquered": 1294,
+  "tilesPerSecond": 42.01,
 }
 `;
 
 exports[`attack scenarios > giant 600k vs 1M tiles, 1M troops attack 500k vs 8M defender 1`] = `
 {
-  "attackerLossPerSecond": 13300,
-  "attackerLossPerTile": 33.68,
+  "attackerLossPerSecond": 13660,
+  "attackerLossPerTile": 50.19,
   "attackerTiles": 591663,
   "attackerTroopsLost": 500000,
   "defenderEliminated": false,
-  "defenderLossPerSecond": 2764,
+  "defenderLossPerSecond": 1905,
   "defenderLossPerTile": 7,
   "defenderTiles": 1010406,
-  "defenderTroopsLost": 103929,
+  "defenderTroopsLost": 69741,
   "finished": true,
-  "ticks": 376,
-  "tilesConquered": 14847,
-  "tilesPerSecond": 394.9,
+  "ticks": 366,
+  "tilesConquered": 9963,
+  "tilesPerSecond": 272.2,
 }
 `;
 

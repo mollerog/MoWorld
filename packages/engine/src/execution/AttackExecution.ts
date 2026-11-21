@@ -448,6 +448,7 @@ export class AttackExecution implements Execution {
         ? this.mg.numTilesWithFallout() / this.mg.numLandTiles()
         : null,
       borderSize,
+      mapLandTiles: this.mg.numLandTiles(),
     };
   }
 

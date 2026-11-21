@@ -1585,6 +1585,7 @@ export class NationAttackBehavior extends AiAttackBehavior {
         defenderHasDefensePost: false,
         falloutRatio: null,
         borderSize: 1,
+        mapLandTiles: this.game.numLandTiles(),
       }).attackerTroopLoss;
     }
     return loss / terrains.length;

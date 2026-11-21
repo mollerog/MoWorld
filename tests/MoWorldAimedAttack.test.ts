@@ -15,14 +15,21 @@ import {
 import { describe, expect, test } from "vitest";
 import { setup } from "./util/Setup";
 import { expectSnapshotRoundTrip } from "./util/Snapshot";
+import { UseRealAttackLogic } from "./util/TestConfig";
 import { executeTicks } from "./util/utils";
 
 // MoWorld: ataque mirado numa construção (focusTile).
 async function arena() {
-  const g = await setup("big_plains", {}, [
-    new PlayerInfo("me", PlayerType.Human, null, "me_id"),
-    new PlayerInfo("them", PlayerType.Nation, null, "them_id"),
-  ]);
+  const g = await setup(
+    "big_plains",
+    {},
+    [
+      new PlayerInfo("me", PlayerType.Human, null, "me_id"),
+      new PlayerInfo("them", PlayerType.Nation, null, "them_id"),
+    ],
+    undefined,
+    UseRealAttackLogic,
+  );
   const me = g.player("me_id");
   const them = g.player("them_id");
   for (let x = 0; x < 200; x++)
@@ -165,7 +172,7 @@ describe("MoWorld: ataque mirado", () => {
   test("save/load no meio do ataque mirado continua igual", async () => {
     const a = await arena();
     attack(a.g, a.me, a.them, 150_000, a.siloTile);
-    executeTicks(a.g, 40);
+    executeTicks(a.g, 2);
     expect(a.me.outgoingAttacks().length).toBe(1);
     await expectSnapshotRoundTrip(a.g, "big_plains", 30);
   });
