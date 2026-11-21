@@ -434,6 +434,8 @@ export const AttackIntentSchema = z.object({
   type: z.literal("attack"),
   targetID: MappedID.nullable(),
   troops: zb.float({ min: 0 }).nullable(),
+  // MoWorld: ataque mirado; a frente avança primeiro na direção deste tile.
+  focusTile: zb.uint().optional(),
 });
 
 export const SpawnIntentSchema = z.object({

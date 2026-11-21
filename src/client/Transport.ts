@@ -116,6 +116,8 @@ export class SendAttackIntentEvent implements GameEvent {
   constructor(
     public readonly targetID: PlayerID | null,
     public readonly troops: number,
+    // MoWorld: ataque mirado numa construção (tile dela).
+    public readonly focusTile?: TileRef,
   ) {}
 }
 
@@ -924,6 +926,7 @@ export class Transport {
       type: "attack",
       targetID: event.targetID,
       troops: event.troops,
+      ...(event.focusTile !== undefined ? { focusTile: event.focusTile } : {}),
     });
   }
 

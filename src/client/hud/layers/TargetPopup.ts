@@ -14,6 +14,7 @@ import { renderNumber, renderTroops } from "@openfront/engine-lib/Format";
 import { EventBus, GameEvent } from "@openfront/shared/EventBus";
 import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { findAttackAim } from "../../AimedAttack";
 import { Controller } from "../../Controller";
 import { CloseViewEvent, ContextMenuEvent } from "../../InputHandler";
 import { TransformHandler } from "../../TransformHandler";
@@ -158,9 +159,15 @@ export class TargetPopup extends LitElement implements Controller {
     const canBoat = this.canBoat(t.actions);
     if (this.useLand(t)) {
       this.target = t;
+      const aim = findAttackAim(this.game, t.tile, t.owner);
       this.attack();
       this.close();
-      this.toast(`⚔ ${renderTroops(sent)} tropas enviadas`, "ok");
+      this.toast(
+        aim
+          ? `🎯 ${renderTroops(sent)} tropas → ${aim.name}`
+          : `⚔ ${renderTroops(sent)} tropas enviadas`,
+        "ok",
+      );
       return;
     }
     if (canBoat) {
@@ -279,7 +286,8 @@ export class TargetPopup extends LitElement implements Controller {
     const me = this.game.myPlayer();
     if (!t || !me) return;
     const sent = this.sendTroops();
-    this.handler.handleAttack(me, t.owner?.id() ?? null);
+    const aim = findAttackAim(this.game, t.tile, t.owner);
+    this.handler.handleAttack(me, t.owner?.id() ?? null, aim?.tile);
     this.eventBus.emit(new CloseRadialMenuEvent());
     this.flash(`✓ ${renderTroops(sent)} tropas enviadas`);
   }
@@ -395,6 +403,7 @@ export class TargetPopup extends LitElement implements Controller {
     // Ilha/outro pedaço sem fronteira com você: o botão vira Barco.
     const canAttack = this.useLand(t);
     const canBoat = this.canBoat(t.actions);
+    const aim = allied ? null : findAttackAim(this.game, t.tile, owner);
     const canAlly =
       owner !== null &&
       !allied &&
@@ -470,6 +479,16 @@ export class TargetPopup extends LitElement implements Controller {
                 Você envia
                 <span class="font-bold">${renderTroops(sending)}</span>
                 · ${strength[0]}
+              </div>`
+            : nothing
+        }
+        ${
+          canAttack && aim
+            ? html`<div
+                class="mt-0.5 text-[11px] font-bold text-amber-300"
+                data-moworld-attack-aim
+              >
+                🎯 Mirando: ${aim.name}
               </div>`
             : nothing
         }

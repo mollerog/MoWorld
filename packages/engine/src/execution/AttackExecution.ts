@@ -34,6 +34,13 @@ import { ArmyMarchExecution } from "./ArmyMarchExecution";
 import { FlatBinaryHeap } from "./utils/FlatBinaryHeap"; // adjust path if needed
 
 const malusForRetreat = 25;
+/**
+ * MoWorld: quanto cada tile de distância até o alvo pesa num ataque mirado.
+ * A parte aleatória da prioridade varia ~5–16 por tile; com meio ponto por tile de
+ * distância (0.5) a frente vira uma ponta de lança de ~10–20 tiles.
+ */
+const FOCUS_PULL = 0.5;
+
 export class AttackExecution implements Execution {
   private active: boolean = true;
   private toConquer = new FlatBinaryHeap();
@@ -61,7 +68,14 @@ export class AttackExecution implements Execution {
     private _targetID: PlayerID | null,
     private sourceTile: TileRef | null = null,
     private removeTroops: boolean = true,
+    // MoWorld: tile alvo de um ataque mirado (null = ataque normal).
+    private focusTile: TileRef | null = null,
   ) {}
+
+  /** MoWorld: tile para onde o ataque está mirado, se houver. */
+  public focus(): TileRef | null {
+    return this.focusTile;
+  }
 
   public targetID(): PlayerID | null {
     return this._targetID;
@@ -90,6 +104,14 @@ export class AttackExecution implements Execution {
         : mg.player(this._targetID);
     this.ownerSmallID = this._owner.smallID();
     this.targetSmallID = this.target.smallID();
+    if (
+      this.focusTile !== null &&
+      (!this.map.isValidRef(this.focusTile) ||
+        this.sourceTile !== null ||
+        this.map.ownerID(this.focusTile) !== this.targetSmallID)
+    ) {
+      this.focusTile = null;
+    }
 
     if (this._owner === this.target) {
       console.error(`Player ${this._owner} cannot attack itself`);
@@ -322,6 +344,15 @@ export class AttackExecution implements Execution {
       return;
     }
 
+    // MoWorld: alvo do ataque mirado tomado (ou perdido): volta ao normal.
+    if (
+      this.focusTile !== null &&
+      this.map.ownerID(this.focusTile) !== this.targetSmallID
+    ) {
+      this.focusTile = null;
+      this.refreshToConquer();
+    }
+
     const borderSize = this.attack.borderSize() + this.random.nextInt(0, 5);
     // Each tile consumes a fraction of the tick; conquer until it is spent.
     let tickBudget = 1;
@@ -471,9 +502,14 @@ export class AttackExecution implements Execution {
           break;
       }
 
+      const base =
+        (this.random.nextInt(0, 7) + 10) * (1 - numOwnedByMe * 0.5 + mag / 2);
+      // Ataque mirado: a distância até o alvo manda na ordem (sem o tickNow,
+      // que faria os flancos antigos ganharem da ponta). Normal: como antes.
       const priority =
-        (this.random.nextInt(0, 7) + 10) * (1 - numOwnedByMe * 0.5 + mag / 2) +
-        tickNow;
+        this.focusTile !== null
+          ? base + FOCUS_PULL * this.map.manhattanDist(neighbor, this.focusTile)
+          : base + tickNow;
 
       this.toConquer.enqueue(neighbor, priority);
     }
@@ -536,6 +572,7 @@ export class AttackExecution implements Execution {
       targetID: this._targetID,
       sourceTile: this.sourceTile,
       removeTroops: this.removeTroops,
+      focusTile: this.focusTile,
     });
   }
 
@@ -562,6 +599,7 @@ export class AttackExecution implements Execution {
     this._targetID = s.targetID;
     this.sourceTile = s.sourceTile;
     this.removeTroops = s.removeTroops;
+    this.focusTile = s.focusTile ?? null;
   }
 }
 
@@ -588,6 +626,8 @@ const AttackExecutionStateSchema = z.object({
   removeTroops: z.boolean(),
   // MoWorld: campo de uma versão anterior (passagem sem marcha); ignorado.
   passage: z.array(zInt()).optional(),
+  // MoWorld: alvo do ataque mirado (ausente em saves antigos).
+  focusTile: zTile().nullable().optional(),
 });
 type AttackExecutionState = z.infer<typeof AttackExecutionStateSchema>;
 

@@ -16,6 +16,7 @@ import { Config } from "@openfront/engine-lib/configuration/Config";
 import { renderNumber } from "@openfront/engine-lib/Format";
 import { findClosestBy } from "@openfront/engine-lib/Util";
 import { assetUrl } from "@openfront/shared/AssetUrls";
+import { findAttackAim } from "../../AimedAttack";
 import { UIState } from "../../UIState";
 import { translateText } from "../../Utils";
 import { GameView, PlayerView } from "../../view";
@@ -773,6 +774,11 @@ export const centerButtonElement: CenterButtonElement = {
         params.playerActionHandler.handleAttack(
           params.myPlayer,
           params.selected?.id() ?? null,
+          findAttackAim(
+            params.game,
+            params.tile,
+            (params.selected as PlayerView | null) ?? null,
+          )?.tile,
         );
       }
     }

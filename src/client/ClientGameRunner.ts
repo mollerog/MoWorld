@@ -29,6 +29,7 @@ import {
 import { ClientEnv } from "../client/ClientEnv";
 import { reloadForUpdate, translateText } from "../client/Utils";
 import { rememberAdmitted } from "./AdmittedLobbies";
+import { findAttackAim } from "./AimedAttack";
 import { MapLayerController } from "./controllers/MapLayerController";
 import { isDesktopShell } from "./DesktopShell";
 import { GameMetrics } from "./GameMetrics";
@@ -1325,10 +1326,17 @@ export class ClientGameRunner {
       .actions(tile, [UnitType.TransportShip])
       .then((actions) => {
         if (actions.canAttack) {
+          const owner = this.gameView.owner(tile);
+          const aim = findAttackAim(
+            this.gameView,
+            tile,
+            owner.isPlayer() ? (owner as PlayerView) : null,
+          );
           this.eventBus.emit(
             new SendAttackIntentEvent(
-              this.gameView.owner(tile).id(),
+              owner.id(),
               this.myPlayer!.troops() * this.renderer.uiState.attackRatio,
+              aim?.tile,
             ),
           );
         } else if (this.canAutoBoat(actions.buildableUnits, tile)) {
@@ -1496,10 +1504,17 @@ export class ClientGameRunner {
       .actions(tile, null)
       .then((actions) => {
         if (actions.canAttack) {
+          const owner = this.gameView.owner(tile);
+          const aim = findAttackAim(
+            this.gameView,
+            tile,
+            owner.isPlayer() ? (owner as PlayerView) : null,
+          );
           this.eventBus.emit(
             new SendAttackIntentEvent(
-              this.gameView.owner(tile).id(),
+              owner.id(),
               this.myPlayer!.troops() * this.renderer.uiState.attackRatio,
+              aim?.tile,
             ),
           );
         }
