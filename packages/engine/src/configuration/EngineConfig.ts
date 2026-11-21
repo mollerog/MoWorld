@@ -96,6 +96,16 @@ const TERRA_NULLIUS_MAX_COST = 100;
 const ATTACKER_LOSS_BASE = 0.463;
 /** Defender troops per attacking troop at or below which the attacker's losses stop shrinking */
 export const CHEAPEST_TROOP_RATIO = 0.6;
+/**
+ * MoWorld: an attack smaller than the defender's whole army no longer pays
+ * extra per tile (upstream: up to 2×). The defender's army sits spread
+ * over its whole border, but the old ratio charged every attack as if all
+ * of it stood on the attacked front: sending half your army at an equal
+ * nation cost ~2.5× what it lost per tile, while its counter (into your
+ * now half-empty land) paid the cheap rate. Capped at parity, the fight is
+ * decided by who sends more, not by who stayed home.
+ */
+const MAX_TROOP_RATIO = 1;
 const ATTACKER_LOSS_PER_DENSITY = 0.0039;
 // Speed divisor: 8.25 / 0.965, absorbing the same sigmoid tail. 8.25 is the
 // old 7.5 raised ~10%: v34 pace feedback said attacks felt a bit too slow, so
@@ -632,7 +642,7 @@ export class EngineConfig extends Config {
     const attackerTroopLoss =
       mag *
       traitorLossMod *
-      within(troopRatio, CHEAPEST_TROOP_RATIO, 2) *
+      within(troopRatio, CHEAPEST_TROOP_RATIO, MAX_TROOP_RATIO) *
       ((ATTACKER_LOSS_BASE * largeAttackerBonus * largeDefenderBonus) /
         costScale +
         ATTACKER_LOSS_PER_DENSITY * defenderTroopLoss);
